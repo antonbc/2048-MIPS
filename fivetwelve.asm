@@ -30,14 +30,19 @@ menu_msg:              .asciiz "Choose [1] or [2]: \n[1] New Game \n[2] Start fr
 grid_line:             .asciiz "+---+---+---+\n"    # Horizontal border line
 cell_left_border:      .asciiz "|"                 # Left border of each cell
 cell_end_border:       .asciiz "|\n"             # Right border for each cell row end
-space:                 .asciiz " "                  
+space:                 .asciiz " "  
+empty_cell:            .asciiz "   "                
 enter_move:            .asciiz "Enter a move (A, D, W, S): "
 win_msg:               .asciiz "Congratulations! You have reached the 512 tile!\n"
 lose_msg:              .asciiz "Game over..\n"
 invalid_input:         .asciiz "Invalid input. Try again.\n"
 enter_grid:            .asciiz "Enter a board configuration (9 numbers):\n"
 newline:               .asciiz "\n"
+
+grid_array:  .word 0, 0, 0, 0, 0, 0, 0, 0, 0   
+
 .text
+
 main:
     jal get_game_choice
     beq $s0, 1, new_game
@@ -51,82 +56,120 @@ get_game_choice:
     jr $ra
 
 new_game:
-    # Allocate 36 bytes on the stack for a 3x3 grid (9 integers)
-    subu $sp, $sp, 36       # Move stack pointer down by 36 bytes
-    sw $ra, 32($sp)         # Save return address to stack
+    jal random_two_index       # Call the random_two_index function
 
-    # Initialize the grid with zeros
-    li $t0, 0               # Initialize with zeros
-    li $t1, 9               # Loop counter for 9 positions
-    move $t2, $sp           # Pointer to the start of grid on stack
-
-initialize_grid:
-    sw $t0, 0($t2)          # Store 0 at the current grid position
-    addiu $t2, $t2, 4       # Move to the next grid position
-    subi $t1, $t1, 1
-    bgtz $t1, initialize_grid
-
-    # Print the initialized grid
-    jal print_grid
-
-    # Restore the stack and return
-    lw $ra, 32($sp)         # Restore return address
-    addiu $sp, $sp, 36      # Deallocate grid space on stack
-    jr $ra
-
-print_grid:
-    li $t3, 0               # $t3 = row counter
-
-print_rows:
-    print_string(grid_line) # Print the top border of each row
-    li $t4, 0               # $t4 = column counter
-
-print_columns:
-    print_string(cell_left_border) # Print the left border of each cell
-    print_string(space)
-
-    # Calculate address of the cell in the stack grid
-    sll $t5, $t3, 2         # Calculate row offset (row index * 4 bytes)
-    mul $t5, $t5, 3         # Move to current row (0, 12, 24, etc.)
-    add $t5, $t5, $t4       # Add column offset
-    sll $t5, $t5, 2         # Multiply by 4 (word size)
-    add $t0, $sp, $t5       # Calculate address of cell
-    lw $a0, 0($t0)          # Load cell value
-    print_integer($a0)      # Print cell value
-    print_string(space)
-
-    addi $t4, $t4, 1        # Move to the next column
-    li $t6, 3
-    blt $t4, $t6, print_columns # Loop through columns
-
-    # Print right border for end of row
-    print_string(cell_end_border)
+    li   $t2, 2            # Example: New value to store at index 3
+    # Calculate the offset and store the value
     
-    # Move to the next row
-    addi $t3, $t3, 1
-    li $t6, 3
-    blt $t3, $t6, print_rows
+    # Store value at index $s1
+    la   $t0, grid_array     # Load base address of the array
+    mul  $t3, $s1, 4         # Calculate byte offset for $s1 (index * 4)
+    add  $t0, $t0, $t3       # Add offset to base address
+    sw   $t2, 0($t0)         # Store value 2 at grid_array[$s1]
 
-    print_string(grid_line) # Print bottom border
-    #jr $ra
+    # Store value at index $s2
+    la   $t0, grid_array     # Load base address of the array
+    mul  $t3, $s2, 4         # Calculate byte offset for $s2 (index * 4)
+    add  $t0, $t0, $t3       # Add offset to base address
+    sw   $t2, 0($t0)         # Store value 2 at grid_array[$s2]
+
+    # Print the modified array
+    la   $t0, grid_array     # Reset base address of grid_array
+    li   $t1, 0              # Start at index 0 for printing
+
+print_loop:
+    bge  $t1, 9, end       # If index >= 9, exit the program
+    lw   $a0, 0($t0)        # Load the value from the array
+    print_integer($a0)
+
+    print_string(newline)
+
+    addi $t0, $t0, 4        # Move to the next word in the array
+    addi $t1, $t1, 1        # Increment index
+    j print_loop            # Continue loop
 
 random_two_index:
-    li $a1, 9               # upperbounds of the random number generated
-    generate_random_number
-    move $t5, $a0           # $t5 contains the first random index
-    print_integer($t5)
+    li   $a1, 9                # Upper bound for random index (0 to 8)
+    generate_random_number   # Generate random number between 0 and 8
+    move $s1, $a0              # Store the first random index in $t5
+    print_integer($s1)
     print_string(newline)
 
-    # Generate the second random index, ensuring it's different from $t5
+    # Generate the second random index ensuring it's different from $t5
 generate_second_index:
-    li $a1, 9               
-    generate_random_number
-    move $t6, $a0           # $t6 contains the second random index
-    beq $t6, $t5, generate_second_index   # If equal, regenerate
-    print_integer($t6)
+    li   $a1, 9                # Upper bound for random index (0 to 8)
+    generate_random_number   # Generate random number
+    move $s2, $a0              # Store the second random index in $t6
+    beq  $s2, $s1, generate_second_index   # If indices match, regenerate
+    print_integer($s2)
+    print_string(newline)
     print_string(newline)
 
     jr $ra
 
+end:
+    exit
 start_from_state:
     exit
+
+
+#     # Place '2' in the cells at positions given by $t5 and $t6
+#     li   $t2, 2                # Value to store (2)
+#     la   $t3, grid_array       # Load base address of grid again
+#     sll  $t5, $t5, 2           # Convert $t5 index to byte offset
+#     sll  $t6, $t6, 2           # Convert $t6 index to byte offset
+#     add  $t7, $t3, $t5         # Calculate address for first random index
+#     sw   $t2, 0($t7)           # Store 2 at that position
+#     add  $t7, $t3, $t6         # Calculate address for second random index
+#     sw   $t2, 0($t7)           # Store 2 at that position
+
+#     # Print the initialized grid with two '2's
+#     jal print_grid
+
+#     jr $ra
+
+# print_grid:
+#     li   $t3, 0                # Row counter
+
+# print_rows:
+#     print_string(grid_line)    # Print the top border of each row
+#     li   $t4, 0                # Column counter
+
+# print_columns:
+#     print_string(cell_left_border)  # Print left border of the cell
+
+#     # Calculate address of the cell in the grid
+#     sll  $t5, $t3, 2           # Row offset (row index * 4 bytes)
+#     mul  $t5, $t5, 3           # Move to the current row (0, 12, 24, etc.)
+#     add  $t5, $t5, $t4         # Add column offset
+#     sll  $t5, $t5, 2           # Multiply by 4 (word size)
+#     la   $t0, grid_array       # Load base address of the grid
+#     add  $t7, $t0, $t5         # Calculate address of the current cell
+#     lw   $a0, 0($t7)           # Load cell value
+
+#     # Print either '2' or empty space
+#     bnez $a0, print_integer_cell
+#     print_string(empty_cell)
+#     j skip_print
+
+# print_integer_cell:
+#     print_string(space)
+#     print_integer($a0)
+#     print_string(space)
+#     print_string(cell_end_border)
+#     jr $ra
+
+# skip_print:
+#     addi $t4, $t4, 1           # Move to the next column
+#     li   $t6, 3
+#     blt  $t4, $t6, print_columns   # Loop through columns
+
+#     # Print right border for the end of the row
+#     print_string(cell_end_border)
+
+#     addi $t3, $t3, 1           # Move to the next row
+#     li   $t6, 3
+#     blt  $t3, $t6, print_rows
+
+#     print_string(grid_line)    # Print bottom border
+#     jr $ra

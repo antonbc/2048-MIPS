@@ -27,11 +27,11 @@
 
 .data
 menu_msg:              .asciiz "Choose [1] or [2]: \n[1] New Game \n[2] Start from a State \n"
-grid_line:             .asciiz "+---+---+---+\n"    # Horizontal border line
-cell_left_border:      .asciiz "|"                 # Left border of each cell
-cell_end_border:       .asciiz "|\n"             # Right border for each cell row end
+grid_line:             .asciiz "+---+---+---+\n"    
+cell_left_border:      .asciiz "|"                 
+cell_end_border:       .asciiz "|\n"             
 space:                 .asciiz " "  
-empty_cell:            .asciiz "   "                
+empty_cell:            .asciiz " "                
 enter_move:            .asciiz "Enter a move (A, D, W, S): "
 win_msg:               .asciiz "Congratulations! You have reached the 512 tile!\n"
 lose_msg:              .asciiz "Game over..\n"
@@ -125,15 +125,23 @@ print_column_loop:
     print_string(space)
 
     lw   $a0, 0($t0)         # Load the value from grid_array
-    print_integer($a0)
+    beq $a0, 0, print_empty_cell
 
+print_nonempty_cell:
+    print_integer($a0)
     print_string(space)
 
+    j increment_cell
+
+print_empty_cell:
+    print_string(empty_cell)
+    print_string(space)
+
+increment_cell:
     addi $t0, $t0, 4         # Move to the next word in the array
     addi $t2, $t2, 1         # Increment column counter
     addi $t1, $t1, 1         # Increment index
 
-    # Check if we finished a row (3 columns per row)
     bne  $t2, 3, print_column_loop
     print_string(cell_end_border)
     bne  $t1, 9, print_row_loop

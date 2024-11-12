@@ -46,7 +46,7 @@ grid_array:  .word 0, 0, 0, 0, 0, 0, 0, 0, 0
 main:
     jal get_game_choice
     beq $s0, 1, new_game
-    jal start_from_state
+    beq $s0, 2, start_from_state
     exit
 
 get_game_choice:
@@ -149,6 +149,107 @@ increment_cell:
 
 end:
     exit
+
 start_from_state:
+    read_integer
+    move $t0, $v0
+
+    li   $t4, 0
+    la   $t1, grid_array     # Load base address of the array
+    mul  $t3, $t4, 4         # Calculate byte offset for $t4 (index * 4)
+    add  $t1, $t1, $t3       # Add offset to base address
+    sw   $t2, 0($t1)         # Store value 2 at grid_array[$s1]
+
+    read_integer
+    move $t0, $v0
+
+    addi $t4, $t4, 1
+    la   $t1, grid_array     # Load base address of the array
+    mul  $t3, $t4, 4         # Calculate byte offset for $t4 (index * 4)
+    add  $t1, $t1, $t3       # Add offset to base address
+    sw   $t2, 0($t1)         # Store value 2 at grid_array[$s1]
+    
+    read_integer
+    move $t0, $v0
+
+    addi $t4, $t4, 1
+    la   $t1, grid_array     # Load base address of the array
+    mul  $t3, $t4, 4         # Calculate byte offset for $t4 (index * 4)
+    add  $t1, $t1, $t3       # Add offset to base address
+    sw   $t2, 0($t1)         # Store value 2 at grid_array[$s1]
+
+    read_integer
+    move $t0, $v0
+
+    addi $t4, $t4, 1
+    la   $t1, grid_array     # Load base address of the array
+    mul  $t3, $t4, 4         # Calculate byte offset for $t4 (index * 4)
+    add  $t1, $t1, $t3       # Add offset to base address
+    sw   $t2, 0($t1)         # Store value 2 at grid_array[$s1]
+
+    read_integer
+    move $t0, $v0
+
+    addi $t4, $t4, 1
+    la   $t1, grid_array     # Load base address of the array
+    mul  $t3, $t4, 4         # Calculate byte offset for $t4 (index * 4)
+    add  $t1, $t1, $t3       # Add offset to base address
+    sw   $t2, 0($t1)         # Store value 2 at grid_array[$s1]
+
+    read_integer
+    move $t0, $v0
+
+    addi $t4, $t4, 1
+    la   $t1, grid_array     # Load base address of the array
+    mul  $t3, $t4, 4         # Calculate byte offset for $t4 (index * 4)
+    add  $t1, $t1, $t3       # Add offset to base address
+    sw   $t2, 0($t1)         # Store value 2 at grid_array[$s1]
+
+    read_integer
+    move $t0, $v0
+
+    addi $t4, $t4, 1
+    la   $t1, grid_array     # Load base address of the array
+    mul  $t3, $t4, 4         # Calculate byte offset for $t4 (index * 4)
+    add  $t1, $t1, $t3       # Add offset to base address
+    sw   $t2, 0($t1)         # Store value 2 at grid_array[$s1]
+
+    read_integer
+    move $t0, $v0
+
+    addi $t4, $t4, 1
+    la   $t1, grid_array     # Load base address of the array
+    mul  $t3, $t4, 4         # Calculate byte offset for $t4 (index * 4)
+    add  $t1, $t1, $t3       # Add offset to base address
+    sw   $t2, 0($t1)         # Store value 2 at grid_array[$s1]
+
+    read_integer
+    move $t0, $v0
+
+    addi $t4, $t4, 1
+    la   $t1, grid_array     # Load base address of the array
+    mul  $t3, $t4, 4         # Calculate byte offset for $t4 (index * 4)
+    add  $t1, $t1, $t3       # Add offset to base address
+    sw   $t2, 0($t1)         # Store value 2 at grid_array[$s1]
+
+    beq $t4, 8, print_grid_2
+
+print_grid_2:
+    la $t0, grid_array
+    li   $t1, 0              # Initialize index to 0
+
+print_arr_i:
+    lw   $a0, 0($t0)         # Load the value from grid_array
+    print_integer($a0)
+    print_string(space)
+    j increment_cell_2
+
+increment_cell_2:
+    addi $t0, $t0, 4         # Move to the next word in the array
+    addi $t1, $t1, 1         # Move to the next word in the array
+    bne $t1, 9, print_arr_i
+
+end_2:
     exit
+    
 

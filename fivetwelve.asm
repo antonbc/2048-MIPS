@@ -76,17 +76,7 @@ new_game:
     # Print the modified array
     la   $t0, grid_array     # Reset base address of grid_array
     li   $t1, 0              # Start at index 0 for printing
-
-print_loop:
-    bge  $t1, 9, initialize_grid       # If index >= 9, exit the program
-    lw   $a0, 0($t0)        # Load the value from the array
-    print_integer($a0)
-
-    print_string(space)
-
-    addi $t0, $t0, 4        # Move to the next word in the array
-    addi $t1, $t1, 1        # Increment index
-    j print_loop            # Continue loop
+    jal     print_loop
 
 random_two_index:
     li   $a1, 9                # Upper bound for random index (0 to 8)
@@ -106,6 +96,17 @@ generate_second_index:
     print_string(newline)
     jr $ra
 
+# make it a function    
+print_loop:
+    bge  $t1, 9, initialize_grid       # If index >= 9, exit the program
+    lw   $a0, 0($t0)        # Load the value from the array
+    print_integer($a0)
+
+    print_string(space)
+
+    addi $t0, $t0, 4        # Move to the next word in the array
+    addi $t1, $t1, 1        # Increment index
+    j print_loop            # Continue loop
 
 initialize_grid:
     print_string(newline)
@@ -122,18 +123,35 @@ print_row_loop:
 print_column_loop:
     # Print left cell border
     print_string(cell_left_border)
-    print_string(space)
 
     lw   $a0, 0($t0)         # Load the value from grid_array
     beq $a0, 0, print_empty_cell
+    blt $a0, 9, print_cell_1_digit
+    blt $a0, 65, print_cell_2_digits
+    blt $a0, 513, print_cell_3_digits
 
-print_nonempty_cell:
+
+print_cell_1_digit:
+    move $t3, $a0  
+    print_string(space)
+    move $a0, $t3
     print_integer($a0)
     print_string(space)
+    j increment_cell
 
+print_cell_2_digits:
+    move $t3, $a0  
+    print_string(space)
+    move $a0, $t3
+    print_integer($a0)
+    j increment_cell
+    
+print_cell_3_digits:
+    print_integer($a0)
     j increment_cell
 
 print_empty_cell:
+    print_string(space)
     print_string(empty_cell)
     print_string(space)
 
@@ -248,6 +266,7 @@ increment_cell_2:
     addi $t0, $t0, 4         # Move to the next word in the array
     addi $t1, $t1, 1         # Move to the next word in the array
     bne $t1, 9, print_arr_i
+    jal print_loop
 
 end_2:
     exit

@@ -158,7 +158,7 @@ start_from_state:
     la   $t1, grid_array     # Load base address of the array
     mul  $t3, $t4, 4         # Calculate byte offset for $t4 (index * 4)
     add  $t1, $t1, $t3       # Add offset to base address
-    sw   $t2, 0($t1)         # Store value 2 at grid_array[$s1]
+    sw   $t0, 0($t1)         # Store value 2 at grid_array[$s1]
 
     read_integer
     move $t0, $v0
@@ -167,7 +167,7 @@ start_from_state:
     la   $t1, grid_array     # Load base address of the array
     mul  $t3, $t4, 4         # Calculate byte offset for $t4 (index * 4)
     add  $t1, $t1, $t3       # Add offset to base address
-    sw   $t2, 0($t1)         # Store value 2 at grid_array[$s1]
+    sw   $t0, 0($t1)         # Store value 2 at grid_array[$s1]
     
     read_integer
     move $t0, $v0
@@ -176,7 +176,7 @@ start_from_state:
     la   $t1, grid_array     # Load base address of the array
     mul  $t3, $t4, 4         # Calculate byte offset for $t4 (index * 4)
     add  $t1, $t1, $t3       # Add offset to base address
-    sw   $t2, 0($t1)         # Store value 2 at grid_array[$s1]
+    sw   $t0, 0($t1)         # Store value 2 at grid_array[$s1]
 
     read_integer
     move $t0, $v0
@@ -185,7 +185,7 @@ start_from_state:
     la   $t1, grid_array     # Load base address of the array
     mul  $t3, $t4, 4         # Calculate byte offset for $t4 (index * 4)
     add  $t1, $t1, $t3       # Add offset to base address
-    sw   $t2, 0($t1)         # Store value 2 at grid_array[$s1]
+    sw   $t0, 0($t1)         # Store value 2 at grid_array[$s1]
 
     read_integer
     move $t0, $v0
@@ -194,7 +194,7 @@ start_from_state:
     la   $t1, grid_array     # Load base address of the array
     mul  $t3, $t4, 4         # Calculate byte offset for $t4 (index * 4)
     add  $t1, $t1, $t3       # Add offset to base address
-    sw   $t2, 0($t1)         # Store value 2 at grid_array[$s1]
+    sw   $t0, 0($t1)         # Store value 2 at grid_array[$s1]
 
     read_integer
     move $t0, $v0
@@ -203,7 +203,7 @@ start_from_state:
     la   $t1, grid_array     # Load base address of the array
     mul  $t3, $t4, 4         # Calculate byte offset for $t4 (index * 4)
     add  $t1, $t1, $t3       # Add offset to base address
-    sw   $t2, 0($t1)         # Store value 2 at grid_array[$s1]
+    sw   $t0, 0($t1)         # Store value 2 at grid_array[$s1]
 
     read_integer
     move $t0, $v0
@@ -212,7 +212,7 @@ start_from_state:
     la   $t1, grid_array     # Load base address of the array
     mul  $t3, $t4, 4         # Calculate byte offset for $t4 (index * 4)
     add  $t1, $t1, $t3       # Add offset to base address
-    sw   $t2, 0($t1)         # Store value 2 at grid_array[$s1]
+    sw   $t0, 0($t1)         # Store value 2 at grid_array[$s1]
 
     read_integer
     move $t0, $v0
@@ -221,7 +221,7 @@ start_from_state:
     la   $t1, grid_array     # Load base address of the array
     mul  $t3, $t4, 4         # Calculate byte offset for $t4 (index * 4)
     add  $t1, $t1, $t3       # Add offset to base address
-    sw   $t2, 0($t1)         # Store value 2 at grid_array[$s1]
+    sw   $t0, 0($t1)         # Store value 2 at grid_array[$s1]
 
     read_integer
     move $t0, $v0
@@ -230,7 +230,7 @@ start_from_state:
     la   $t1, grid_array     # Load base address of the array
     mul  $t3, $t4, 4         # Calculate byte offset for $t4 (index * 4)
     add  $t1, $t1, $t3       # Add offset to base address
-    sw   $t2, 0($t1)         # Store value 2 at grid_array[$s1]
+    sw   $t0, 0($t1)         # Store value 2 at grid_array[$s1]
 
     beq $t4, 8, print_grid_2
 

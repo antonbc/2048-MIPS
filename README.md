@@ -40,12 +40,12 @@ https://courses.missouristate.edu/KenVollmar/MARS/MARS_4_5_Aug2014/Mars4_5.jar
 ### 1. MARS Setup
 Download and install the [MARS MIPS Simulator](http://courses.missouristate.edu/KenVollmar/mars/).
 
-### 2. Running the Game (with GUI)
+### 2. Running the Game (with MARS Terminal)
 
 - Place the `fivetwelve.asm` file in your MARS projects folder.
 - Open MARS and run the `fivetwelve.asm` file to play the game.
 
-### 3. Running the Game (via Terminal)
+### 3. Running the Game (via Windows Terminal)
 
 If you prefer to run the game from the terminal without the GUI, use the MARS JAR file to execute the MIPS code.
 

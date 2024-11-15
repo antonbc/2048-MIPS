@@ -282,6 +282,7 @@ increment_cell:
     bne  $t3, 9, print_row_loop      # If not finished with all 9 cells, start next row
     print_string(grid_line)          # Print the final grid line after the last row
     jr $ra
+
 start_from_state:
     li   $t4, 0                   # Initialize index to 0
 

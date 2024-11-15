@@ -81,8 +81,9 @@ grid_line:             .asciiz "+---+---+---+\n"
 cell_left_border:      .asciiz "|"                  
 cell_end_border:       .asciiz "|\n"              
 space:                 .asciiz " "  
-empty_cell:            .asciiz " "                
-enter_move:            .asciiz "Enter a move (A, D, W, S): "
+empty_cell:            .asciiz " "      
+line_break:            .asciiz "\n\n"          
+enter_move:            .asciiz "Enter a move: "
 invalid_input_msg:     .asciiz "Invalid input. Try again.\n"
 win_msg:               .asciiz "Congratulations! You have reached the 512 tile!\n"
 lose_msg:              .asciiz "Game over..\n"
@@ -158,8 +159,8 @@ random_two_index:
     li   $a1, 9               # Upper bound for random index (0 to 8)
     generate_random_number    # Generate first random index
     move $t1, $a0             # Store the first random index in $t1
-    print_integer($t1)        # Debug: print the value of t1
-    print_string(newline)
+    # print_integer($t1)        # Debug: print the value of t1
+    # print_string(newline)
     move $a0, $t1             # Move index $t1 to argument register $a0
     jal set_register_value    # Call set_register_value to place 2 at index t1
     jal generate_second_index # Jump to generate_second_index function
@@ -177,8 +178,8 @@ generate_second_loop:
     generate_random_number    # Generate second random index
     move $t2, $a0             # Store the second random index in $t2
     beq  $t2, $t1, generate_second_loop # If indices match, regenerate
-    print_integer($t2)        # Debug: print the value of t2
-    print_string(newline)
+    # print_integer($t2)        # Debug: print the value of t2
+    # print_string(newline)
     move $a0, $t2             # Move index $t2 to argument register $a0
     jal set_register_value    # Call set_register_value to place 2 at index t2
 
@@ -311,9 +312,8 @@ validate_input:
     li $t5, 512
     beq $t0, $t5, store_value
 
-    # If none of the valid values match, prompt for input again
-    print_string(invalid_input_msg)  # Prompt for valid input
-    j start_input_loop               # Restart input loop
+    #print_string(invalid_input_msg)  
+    j start_input_loop              
 
 store_value:
     # Store value in registers based on the index $t4
@@ -365,9 +365,70 @@ store_in_t8:
 
 
 game_loop:
-    print_string(enter_move)
-    read_string
+    print_string(enter_move)     # Prompt the user for input
+    read_string                  # Read the string input from the user
+
+    # Check if the input is one of the allowed values: A, W, D, S, 3, 4, X
+    jal is_valid_input           # Jump to function that checks if input is valid
+    beq $v0, 1, handle_valid_input # If valid input, proceed
+    print_string(invalid_input_msg) # If invalid, print a message and loop back
+    j game_loop                  # Continue asking for input
+
+handle_valid_input:
+    # Handle the specific valid inputs: A, W, D, S, 3, 4, X
+    lb $t0, 0($a0)               # Load the first character of input
+
+    # Check if input is 'X' to end the game
+    li $t1, 88                   # ASCII value for 'X'
+    beq $t0, $t1, end            # If 'X' is entered, end the game
+
+    # Check if input is '3' to disable random tile generation
+    li $t1, 51                   # ASCII value for '3'
+    beq $t0, $t1, disable_random_tiles
+
+    # Check if input is '4' to enable random tile generation
+    li $t1, 52                   # ASCII value for '4'
+    beq $t0, $t1, enable_random_tiles
+
+    # Handle other moves here (A, W, D, S)
+    #print_string(valid_input_msg) # Example handling for valid move input
+    j game_loop                  # Go back to game loop
+
+disable_random_tiles:
+    li $t5, 0                    # Set random tile generator to disabled
     j game_loop
+
+enable_random_tiles:
+    li $t5, 1                    # Set random tile generator to enabled
+    j game_loop
+
+# Function to check if the input is valid (A, W, D, S, 3, 4, or X)
+is_valid_input:
+    lb $t0, 0($a0)               # Load the first byte of the input string
+
+    # Check if input is one of the allowed characters
+    li $t1, 65                   # ASCII 'A'
+    beq $t0, $t1, valid_input
+    li $t1, 87                   # ASCII 'W'
+    beq $t0, $t1, valid_input
+    li $t1, 68                   # ASCII 'D'
+    beq $t0, $t1, valid_input
+    li $t1, 83                   # ASCII 'S'
+    beq $t0, $t1, valid_input
+    li $t1, 51                   # ASCII '3'
+    beq $t0, $t1, valid_input
+    li $t1, 52                   # ASCII '4'
+    beq $t0, $t1, valid_input
+    li $t1, 88                   # ASCII 'X'
+    beq $t0, $t1, valid_input
+
+    # If not valid
+    li $v0, 0                    # Return 0 for invalid input
+    jr $ra
+
+valid_input:
+    li $v0, 1                    # Return 1 for valid input
+    jr $ra
 
 end:
     exit

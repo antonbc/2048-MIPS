@@ -39,7 +39,9 @@ invalid_input:         .asciiz "Invalid input. Try again.\n"
 enter_grid:            .asciiz "Enter a board configuration (9 numbers):\n"
 newline:               .asciiz "\n"
 
-grid_array:  .word 0, 0, 0, 0, 0, 0, 0, 0, 0   
+n:                     .word 3
+
+
 
 .text
 

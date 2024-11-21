@@ -130,16 +130,16 @@ new_row:
 
 random_two_index:
     # Generate two random unique indices within grid bounds
-    li   $t0, -1
-    li   $t1, -1
     mul  $t2, $s3, $s3       # Calculate total cells n*n
 
 generate_first_index:
+    li   $t0, 9
     generate_random_number    # Generate random number
     rem  $t0, $v0, $t2       # Index = random_number % (n*n)
     bgez $t0, generate_second_index # Ensure valid index
 
 generate_second_index:
+    li   $t1, 9
     generate_random_number
     rem  $t1, $v0, $t2
     bne  $t1, $t0, unique_indices  # Ensure unique indices

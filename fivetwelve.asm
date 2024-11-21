@@ -7,13 +7,17 @@
     	do_syscall(5)                 
 .end_macro
 
+.macro read_string # reads input integer
+    	do_syscall(8)                 
+.end_macro
+
 .macro print_integer(%label) # print an integer
     	move $a0, %label            
     	do_syscall(1)                 
 .end_macro
 
 .macro print_string(%label) # print a string
-    	move $a0, %label
+    	la $a0, %label
     	do_syscall(4)
 .end_macro
 
@@ -117,7 +121,7 @@ increment_cell:
 
 new_row:
     # Print row ending and reset cell counter
-    print_string(cell_end_border
+    print_string(cell_end_border)
     addi $t1, $t1, 1         # Increment row counter
     li   $t2, 0              # Reset cell counter
     bne  $t1, $s3, print_row # Continue to next row if not done

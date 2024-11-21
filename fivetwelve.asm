@@ -66,6 +66,12 @@ main:
     beq $s0, 2, start_from_state
     jal exit
 
+get_game_choice:
+    print_string(menu_msg)
+    read_integer
+    move $t0, $v0
+    jr $ra
+    
 new_game:
     # Randomly place two 2s in the grid
     li   $t2, 2              # Value to place in grid

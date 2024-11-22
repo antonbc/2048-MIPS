@@ -52,11 +52,12 @@ main:
     subu $sp, $sp, $t1         # Adjust the stack pointer to create space
     move $s4, $sp              # Base address of the grid is now in $s4
 
+game_choice_loop:
     # Proceed with game logic
     jal get_game_choice
     beq $s0, 1, new_game
     beq $s0, 2, start_from_state
-    exit
+    j game_choice_loop
 
 get_game_choice:
     print_string(menu_msg)
@@ -133,13 +134,13 @@ random_two_index:
     mul  $t2, $s3, $s3       # Calculate total cells n*n
 
 generate_first_index:
-    li   $t0, 9
+    li   $a1, 9
     generate_random_number    # Generate random number
     rem  $t0, $v0, $t2       # Index = random_number % (n*n)
     bgez $t0, generate_second_index # Ensure valid index
 
 generate_second_index:
-    li   $t1, 9
+    li   $a1, 9
     generate_random_number
     rem  $t1, $v0, $t2
     bne  $t1, $t0, unique_indices  # Ensure unique indices

@@ -30,14 +30,14 @@ menu_msg:              .asciiz "Choose [1] or [2]: \n[1] New Game \n[2] Start fr
 grid_line:             .asciiz "+---+---+---+\n"    
 cell_left_border:      .asciiz "|"                 
 cell_end_border:       .asciiz "|\n"             
-empty_cell:            .asciiz "   "                # Adjust spacing for empty cells
+empty_cell:            .asciiz "   "              
 enter_move:            .asciiz "Enter a move (A, D, W, S): "
 win_msg:               .asciiz "Congratulations! You have reached the 512 tile!\n"
 lose_msg:              .asciiz "Game over..\n"
 invalid_input:         .asciiz "Invalid input. Try again.\n"
 newline:               .asciiz "\n"
 
-n:                     .word 3
+n:                     .word 3 # Grid size (can be changed to any value)
 
 .text
 main:
@@ -46,11 +46,17 @@ main:
     lw   $t0, 0($a0)           # Load grid size into $t0
     move $s3, $t0              # Store n in $s3 for later use
 
-    # Allocate memory for the grid on the stack (n * n * 4 bytes)
-    mul  $t1, $t0, $t0         # Calculate n * n
-    mul  $t1, $t1, 4           # Calculate total bytes (n * n * 4)
-    subu $sp, $sp, $t1         # Adjust the stack pointer to create space
+    # Calculate total grid memory size (n * n * 4 bytes for integers)
+    mul  $t1, $t0, $t0         # n * n (number of cells)
+    mul  $t1, $t1, 4           # n * n * 4 (bytes per cell)
+
+    # Allocate space for the grid and the return address
+    addi $t1, $t1, 4           # Add 4 bytes for the return address
+    subu $sp, $sp, $t1         # Adjust stack pointer to create space
     move $s4, $sp              # Base address of the grid is now in $s4
+
+    # Store the return address at the top of the allocated space
+    sw   $ra, 0($s4)           # Save return address at the top of the allocated space
 
 game_choice_loop:
     # Proceed with game logic
@@ -83,9 +89,10 @@ new_game:
     exit
 
 store_random_value:
-    # Calculate index offset dynamically
-    mul  $t3, $a1, 4         # Calculate byte offset for index (index * 4)
-    add  $t0, $s4, $t3       # Add offset to base address
+    # Store value at calculated grid memory address
+    move $t0, $s4            # Load base address of grid
+    mul  $t3, $a1, 4         # Calculate byte offset (index * 4)
+    add  $t0, $t0, $t3       # Add offset to base address
     sw   $t2, 0($t0)         # Store value 2 at grid[index]
     jr   $ra
 
@@ -152,4 +159,6 @@ unique_indices:
     jr $ra
 
 start_from_state:
-    exit
+    # Retrieve the return address and jump back to caller
+    lw   $ra, 0($s4)         # Load return address
+    jr   $ra

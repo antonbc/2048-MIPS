@@ -239,6 +239,7 @@ input_loop:
     move $t3, $v0            # Move the input value to $a0 for processing
 
 validate_input:
+    beq  $t3, 0, store_input
     beq  $t3, 2, store_input
     beq  $t3, 4, store_input
     beq  $t3, 8, store_input
@@ -266,4 +267,7 @@ input_done:
 
 
 play_game:
-    
+
+
+end_game:
+    exit

@@ -86,7 +86,6 @@ n:                     .word 3 # Grid size (can be changed to any value)
 
 .text
 main:
-    # Get grid size (n)
     la   $a0, n                # Load address of n
     lw   $t0, 0($a0)           # Load grid size into $t0
     move $s3, $t0              # Store n in $s3 for later use
@@ -104,7 +103,6 @@ main:
     sw   $ra, 0($s4)           # Save return address at the top of the allocated space
 
 game_choice_loop:
-    # Proceed with game logic
     jal get_game_choice
     beq $s0, 1, new_game
     beq $s0, 2, start_from_state
@@ -118,22 +116,16 @@ get_game_choice:
 
 new_game:
     # Randomly place two 2s in the grid
-    li   $t2, 2              # Value to place in grid
+
     jal random_two_index     # Get two random indices in $s1, $s2
-    print_integer($s1)
-    print_string(newline)
-    print_integer($s2)
-    print_string(newline)
-    print_string(newline)
-
     jal store_random_value
+    jal play_game
 
-    # Print the modified grid
-    jal print_array
     exit
 
 store_random_value:
     # Store value at calculated grid memory address
+    li   $t2, 2              # Value to place in grid
     mul  $t0, $s1, 4          # $t0 = $s1 * 4 (byte offset)
     add  $t0, $s4, $t0        # $t0 = base address ($s4) + offset
     li   $t2, 2               # Load the value 2
@@ -144,6 +136,8 @@ store_random_value:
     add  $t1, $s4, $t1        # $t1 = base address ($s4) + offset
     li   $t2, 2               # Load the value 2 again
     sw   $t2, 0($t1)          # Store 2 at the calculated address
+
+    jal print_array
     jr   $ra  
 
 print_array:
@@ -232,6 +226,44 @@ generate_two_index_end:
     jr $ra
 
 start_from_state:
-    # Retrieve the return address and jump back to caller
+    li   $t0, 0              # Cell counter (initialize to 0)
+    move $t1, $s4            # Base address of the grid in $s4
+    mul  $t2, $s3, $s3       # Calculate total cells (n * n)
+
+input_loop:
+    # Check if all inputs are collected
+    beq  $t0, $t2, input_done
+
+    # Read input integer
+    read_integer
+    move $t3, $v0            # Move the input value to $a0 for processing
+
+validate_input:
+    beq  $t3, 2, store_input
+    beq  $t3, 4, store_input
+    beq  $t3, 8, store_input
+    beq  $t3, 16, store_input
+    beq  $t3, 32, store_input
+    beq  $t3, 64, store_input
+    beq  $t3, 128, store_input
+    beq  $t3, 256, store_input
+    beq  $t3, 512, store_input
+
+    # If input is invalid, discard and re-read
+    j    input_loop
+
+store_input:
+    # Store the valid input in the grid memory
+    sw   $t3, 0($t1)         # Store the value at the current memory address
+    addi $t1, $t1, 4         # Move to the next memory address
+    addi $t0, $t0, 1         # Increment cell counter
+    j    input_loop          # Continue to the next cell
+
+input_done:
     lw   $ra, 0($s4)         # Load return address
-    jr   $ra
+    jal print_array
+    j play_game
+
+
+play_game:
+    

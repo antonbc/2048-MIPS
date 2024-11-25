@@ -7,6 +7,10 @@
     do_syscall(5)                 
 .end_macro
 
+.macro read_string # reads input integer
+    	do_syscall(8)                 
+.end_macro
+
 .macro print_integer(%label) # print an integer
     move $a0, %label            
     do_syscall(1)                 
@@ -265,9 +269,98 @@ input_done:
     jal print_array
     j play_game
 
+# working code
+random_tile_generator:
+    mul  $t2, $s3, $s3       # Calculate total cells n*n
+    move $a1, $t2            # Set $a1 to total number of cells (n * n)
+    
+generate_random_index:
+    generate_random_number   # Generate random number between 0 and n*n-1
+    move $s1, $a0            # Store the random index in $s1
+    
+    # Calculate the memory address for the random index
+    mul  $t0, $s1, 4         # Calculate byte offset (index * 4)
+    add  $t0, $s4, $t0       # Add the base address of the grid ($s4)
+
+    lw   $t3, 0($t0)         # Load the value at the random index
+    
+    # If the cell is empty (value == 0), place a 2 at the random index
+    beq  $t3, $zero, place_two
+    
+    # If the cell is not empty, generate a new index
+    j    generate_random_index
+
+place_two:
+    li   $t3, 2              # Load the value 2
+    sw   $t3, 0($t0)         # Store the value 2 at the calculated address
+    jr   $ra                 # Return from function
+
 
 play_game:
+    print_string(enter_move)        # Prompt user for move
+    read_string                     # Read user input string
+    
+    # Check if the user wants to exit the game
+    li   $t0, 88                    # ASCII value for 'X'
+    lb   $t1, 0($a0)                # Load first character of input string
+    beq  $t1, $t0, end_game         # If 'X', exit the game
 
+    # Check if the user wants to disable random tile generator (input '3')
+    li   $t0, 51                    # ASCII value for '3'
+    beq  $t1, $t0, disable_random_generator
+
+    # Check if the user wants to enable random tile generator (input '4')
+    li   $t0, 52                    # ASCII value for '4'
+    beq  $t1, $t0, enable_random_generator
+
+    li   $t0, 65                    # ASCII value for 'A' (swipe left)
+    beq  $t1, $t0, swipe_left       # If 'A', swipe left
+
+    li   $t0, 68                    # ASCII value for 'D' (swipe right)
+    beq  $t1, $t0, swipe_right      # If 'D', swipe right
+
+    li   $t0, 87                    # ASCII value for 'W' (swipe up)
+    beq  $t1, $t0, swipe_up         # If 'W', swipe up
+
+    li   $t0, 83                    # ASCII value for 'S' (swipe down)
+    beq  $t1, $t0, swipe_down       # If 'S', swipe down
+
+    # If the input is invalid, continue the game without any action
+    j    play_game
+
+# Disable Random Generator
+disable_random_generator:
+    li   $s5, 0                     # Set flag to 0 (disable random generator)
+    j    play_game                 # Continue game loop
+
+# Enable Random Generator
+enable_random_generator:
+    li   $s5, 1                     # Set flag to 1 (enable random generator)
+    j    play_game                 # Continue game loop
+    
+swipe_left:
+    # Handle swipe left action (you will need to implement the logic for moving tiles left)
+    jal perform_swipe_left
+    jal print_array                 # Update and print the grid
+    j    play_game
+
+swipe_right:
+    # Handle swipe right action (implement logic for moving tiles right)
+    jal perform_swipe_right
+    jal print_array                 # Update and print the grid
+    j    play_game
+
+swipe_up:
+    # Handle swipe up action (implement logic for moving tiles up)
+    jal perform_swipe_up
+    jal print_array                 # Update and print the grid
+    j    play_game
+
+swipe_down:
+    # Handle swipe down action (implement logic for moving tiles down)
+    jal perform_swipe_down
+    jal print_array                 # Update and print the grid
+    j    play_game
 
 end_game:
     exit

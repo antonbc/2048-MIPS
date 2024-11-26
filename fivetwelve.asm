@@ -352,6 +352,8 @@ enable_random_generator:
     j    play_game                  # Continue game loop
 
 
+
+
 swipe_right:
     li   $t0, 0               # Start with the first row index (0, 1, 2 for rows)
 
@@ -589,19 +591,211 @@ store_back_left:
 
 
 
+
 swipe_up:
-    # Handle swipe up action (implement logic for moving tiles up)
-    exit
-    # jal perform_swipe_up
-    # jal print_array                 # Update and print the grid
-    # j    play_game
+    li   $t0, 0               # Start with the first column index (0, 1, 2 for columns)
+
+swipe_up_column_up:
+    # Calculate the base address of the current column
+    mul  $t1, $t0, 4          # $t1 = column_index * 4 (4 bytes per element)
+    add  $t2, $s4, $t1        # $t2 = base address + column offset (points to the column)
+
+    # Load the 3 values in the column into registers
+    lw   $t3, 0($t2)          # Top value
+    lw   $t4, 12($t2)         # Middle value
+    lw   $t5, 24($t2)         # Bottom value
+
+    # Step 1: Shift non-zero values upwards
+    li   $a0, 0               # Clear temporary slots (top)
+    li   $a1, 0               # Clear temporary slots (middle)
+    li   $a2, 0               # Clear temporary slots (bottom)
+
+    # Check each value from top to bottom and shift to temporary slots
+    bne  $t3, $zero, shift_t3_up
+    j    check_t4_up
+
+shift_t3_up:
+    move $a0, $t3             # Place $t3 in the top slot
+    j    check_t4_up
+
+check_t4_up:
+    bne  $t4, $zero, shift_t4_up
+    j    check_t5_up
+
+shift_t4_up:
+    beq  $a0, $zero, store_t4_top_up
+    move $a1, $t4             # Place $t4 in the second slot
+    j    check_t5_up
+
+store_t4_top_up:
+    move $a0, $t4             # Place $t4 in the top slot
+    j    check_t5_up
+
+check_t5_up:
+    bne  $t5, $zero, shift_t5_up
+    j    merge_values_up
+
+shift_t5_up:
+    beq  $a0, $zero, store_t5_top_up
+    beq  $a1, $zero, store_t5_middle_up
+    move $a2, $t5             # Place $t5 in the bottom slot
+    j    merge_values_up
+
+store_t5_top_up:
+    move $a0, $t5             # Place $t5 in the top slot
+    j    merge_values_up
+
+store_t5_middle_up:
+    move $a1, $t5             # Place $t5 in the middle slot
+    j    merge_values_up
+
+# Step 2: Merge values
+merge_values_up:
+    # Merge top two values if they are equal
+    beq  $a0, $a1, merge_a0_a1_up
+    j    check_a1_a2_up
+
+merge_a0_a1_up:
+    add  $a0, $a0, $a1        # Merge $a0 and $a1
+    li   $a1, 0               # Clear $a1
+    bne  $a2, $zero, shift_a2_to_a1_up
+    j    store_back_up
+
+shift_a2_to_a1_up:
+    move $a1, $a2             # Shift $a2 into $a1
+    li   $a2, 0               # Clear $a2
+    j    store_back_up
+
+check_a1_a2_up:
+    beq  $a1, $a2, merge_a1_a2_up
+    j    store_back_up
+
+merge_a1_a2_up:
+    add  $a1, $a1, $a2        # Merge $a1 and $a2
+    li   $a2, 0               # Clear $a2
+    j    store_back_up
+
+# Step 3: Store the values back in memory
+store_back_up:
+    sw   $a0, 0($t2)          # Store the topmost value
+    sw   $a1, 12($t2)         # Store the middle value
+    sw   $a2, 24($t2)         # Store the bottommost value
+
+    # Move to the next column
+    addi $t0, $t0, 1          # Increment column index
+    li   $t6, 3               # Total number of columns (3)
+    bne  $t0, $t6, swipe_up_column_up
+
+    # After processing all columns, print the grid and return
+    jal  random_tile_generator
+    jal  print_array          # Print the updated grid
+
+    j    play_game
+
+
+
 
 swipe_down:
-    # Handle swipe down action (implement logic for moving tiles down)
-    exit
-    # jal perform_swipe_down
-    # jal print_array                 # Update and print the grid
-    # j    play_game
+    li   $t0, 0               # Start with the first column index (0, 1, 2 for columns)
+
+swipe_down_column_down:
+    # Calculate the base address of the current column
+    mul  $t1, $t0, 4          # $t1 = column_index * 4 (4 bytes per element)
+    add  $t2, $s4, $t1        # $t2 = base address + column offset (points to the column)
+
+    # Load the 3 values in the column into registers
+    lw   $t3, 0($t2)          # Top value
+    lw   $t4, 12($t2)         # Middle value
+    lw   $t5, 24($t2)         # Bottom value
+
+    # Step 1: Shift non-zero values downward
+    li   $a0, 0               # Clear temporary slots (top)
+    li   $a1, 0               # Clear temporary slots (middle)
+    li   $a2, 0               # Clear temporary slots (bottom)
+
+    # Check each value from bottom to top and shift to temporary slots
+    bne  $t5, $zero, shift_t5_down
+    j    check_t4_down
+
+shift_t5_down:
+    move $a2, $t5             # Place $t5 in the bottom slot
+    j    check_t4_down
+
+check_t4_down:
+    bne  $t4, $zero, shift_t4_down
+    j    check_t3_down
+
+shift_t4_down:
+    beq  $a2, $zero, store_t4_bottom_down
+    move $a1, $t4             # Place $t4 in the middle slot
+    j    check_t3_down
+
+store_t4_bottom_down:
+    move $a2, $t4             # Place $t4 in the bottom slot
+    j    check_t3_down
+
+check_t3_down:
+    bne  $t3, $zero, shift_t3_down
+    j    merge_values_down
+
+shift_t3_down:
+    beq  $a2, $zero, store_t3_bottom_down
+    beq  $a1, $zero, store_t3_middle_down
+    move $a0, $t3             # Place $t3 in the top slot
+    j    merge_values_down
+
+store_t3_bottom_down:
+    move $a2, $t3             # Place $t3 in the bottom slot
+    j    merge_values_down
+
+store_t3_middle_down:
+    move $a1, $t3             # Place $t3 in the middle slot
+    j    merge_values_down
+
+# Step 2: Merge values downward
+merge_values_down:
+    # Merge bottom two values if they are equal
+    beq  $a2, $a1, merge_a2_a1_down
+    j    check_a1_a0_down
+
+merge_a2_a1_down:
+    add  $a2, $a2, $a1        # Merge $a2 and $a1
+    li   $a1, 0               # Clear $a1
+    bne  $a0, $zero, shift_a0_to_a1_down
+    j    store_back_down
+
+shift_a0_to_a1_down:
+    move $a1, $a0             # Shift $a0 into $a1
+    li   $a0, 0               # Clear $a0
+    j    store_back_down
+
+check_a1_a0_down:
+    beq  $a1, $a0, merge_a1_a0_down
+    j    store_back_down
+
+merge_a1_a0_down:
+    add  $a1, $a1, $a0        # Merge $a1 and $a0
+    li   $a0, 0               # Clear $a0
+    j    store_back_down
+
+# Step 3: Store the values back in memory
+store_back_down:
+    sw   $a0, 0($t2)          # Store the topmost value
+    sw   $a1, 12($t2)         # Store the middle value
+    sw   $a2, 24($t2)         # Store the bottommost value
+
+    # Move to the next column
+    addi $t0, $t0, 1          # Increment column index
+    li   $t6, 3               # Total number of columns (3)
+    bne  $t0, $t6, swipe_down_column_down
+
+    # After processing all columns, print the grid and return
+    jal  random_tile_generator
+    jal  print_array          # Print the updated grid
+
+    j    play_game
+
+
 
 end_game:
     exit

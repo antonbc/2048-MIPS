@@ -282,31 +282,6 @@ input_done:
     jal print_array
     j play_game
 
-# working code
-random_tile_generator:
-    mul  $t2, $s3, $s3       # Calculate total cells n*n
-    move $a1, $t2            # Set $a1 to total number of cells (n * n)
-    
-generate_random_index:
-    generate_random_number   # Generate random number between 0 and n*n-1
-    move $s1, $a0            # Store the random index in $s1
-    
-    # Calculate the memory address for the random index
-    mul  $t0, $s1, 4         # Calculate byte offset (index * 4)
-    add  $t0, $s4, $t0       # Add the base address of the grid ($s4)
-
-    lw   $t3, 0($t0)         # Load the value at the random index
-    
-    # If the cell is empty (value == 0), place a 2 at the random index
-    beq  $t3, $zero, place_two
-    
-    # If the cell is not empty, generate a new index
-    j    generate_random_index
-
-place_two:
-    li   $t3, 2              # Load the value 2
-    sw   $t3, 0($t0)         # Store the value 2 at the calculated address
-    jr   $ra                 # Return from function
 
 play_game:
     set_all_temp_registers_to_zero
@@ -340,6 +315,34 @@ play_game:
     print_string(invalid_input) 
     # If the input is invalid, continue the game without any action
     j    play_game
+
+
+# working code
+random_tile_generator:
+    mul  $t2, $s3, $s3       # Calculate total cells n*n
+    move $a1, $t2            # Set $a1 to total number of cells (n * n)
+    
+generate_random_index:
+    generate_random_number   # Generate random number between 0 and n*n-1
+    move $s1, $a0            # Store the random index in $s1
+    
+    # Calculate the memory address for the random index
+    mul  $t0, $s1, 4         # Calculate byte offset (index * 4)
+    add  $t0, $s4, $t0       # Add the base address of the grid ($s4)
+
+    lw   $t3, 0($t0)         # Load the value at the random index
+    
+    # If the cell is empty (value == 0), place a 2 at the random index
+    beq  $t3, $zero, place_two
+    
+    # If the cell is not empty, generate a new index
+    j    generate_random_index
+
+place_two:
+    li   $t3, 2              # Load the value 2
+    sw   $t3, 0($t0)         # Store the value 2 at the calculated address
+    jr   $ra                 # Return from function
+
 
 # Disable Random Generator
 disable_random_generator:

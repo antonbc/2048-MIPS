@@ -91,6 +91,7 @@ n:                     .word 3 # Grid size (can be changed to any value)
 
 .text
 main:
+    li $s5, 4
     la   $a0, n                # Load address of n
     lw   $t0, 0($a0)           # Load grid size into $t0
     move $s3, $t0              # Store n in $s3 for later use
@@ -341,17 +342,18 @@ generate_random_index:
 place_two:
     li   $t3, 2              # Load the value 2
     sw   $t3, 0($t0)         # Store the value 2 at the calculated address
-    jr   $ra                 # Return from function
+    jal print_array                 # Return from function
+    j play_game
 
 
 # Disable Random Generator
 disable_random_generator:
-    li   $s5, 0                     # Set flag to 0 (disable random generator)
+    li   $s5, 3                     # Set flag to 0 (disable random generator)
     j    play_game                  # Continue game loop
 
 # Enable Random Generator
 enable_random_generator:
-    li   $s5, 1                     # Set flag to 1 (enable random generator)
+    li   $s5, 4                     # Set flag to 1 (enable random generator)
     j    play_game                  # Continue game loop
 
 
@@ -468,7 +470,7 @@ store_back:
     bne  $t0, $t6, swipe_right_row
 
     # After processing all rows, print the grid and return
-    jal random_tile_generator
+    beq $s5, 4, random_tile_generator
     jal  print_array          # Print the updated grid
 
     j play_game
@@ -587,8 +589,8 @@ store_back_left:
     bne  $t0, $t6, swipe_left_row
 
     # After processing all rows, print the grid and return
-    jal random_tile_generator
-    jal print_array           # Print the updated grid
+    beq $s5, 4, random_tile_generator
+    jal  print_array          # Print the updated grid
 
     j play_game
 
@@ -690,10 +692,10 @@ store_back_up:
     bne  $t0, $t6, swipe_up_column_up
 
     # After processing all columns, print the grid and return
-    jal  random_tile_generator
+    beq $s5, 4, random_tile_generator
     jal  print_array          # Print the updated grid
 
-    j    play_game
+    j play_game
 
 
 
@@ -793,10 +795,10 @@ store_back_down:
     bne  $t0, $t6, swipe_down_column_down
 
     # After processing all columns, print the grid and return
-    jal  random_tile_generator
+    beq $s5, 4, random_tile_generator
     jal  print_array          # Print the updated grid
 
-    j    play_game
+    j play_game
 
 
 

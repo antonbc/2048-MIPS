@@ -8,7 +8,8 @@
 .end_macro
 
 .macro read_string # reads input integer
-    	do_syscall(8)                 
+    do_syscall(12)     
+    move $a0, $v0            
 .end_macro
 
 .macro print_integer(%label) # print an integer
@@ -123,7 +124,7 @@ new_game:
 
     jal random_two_index     # Get two random indices in $s1, $s2
     jal store_random_value
-    jal play_game
+    j play_game
 
     exit
 
@@ -141,7 +142,17 @@ store_random_value:
     li   $t2, 2               # Load the value 2 again
     sw   $t2, 0($t1)          # Store 2 at the calculated address
 
+    # Save $ra before calling print_array
+    addi $sp, $sp, -4         # Allocate space on the stack
+    sw   $ra, 0($sp)          # Save the return address
+
+    # Call print_array
     jal print_array
+
+    # Restore $ra after print_array returns
+    lw   $ra, 0($sp)          # Restore the return address
+    addi $sp, $sp, 4          # Deallocate stack space
+
     jr   $ra  
 
 print_array:
@@ -229,6 +240,8 @@ generate_second_index:
 generate_two_index_end:
     jr $ra
 
+
+
 start_from_state:
     li   $t0, 0              # Cell counter (initialize to 0)
     move $t1, $s4            # Base address of the grid in $s4
@@ -295,14 +308,14 @@ place_two:
     sw   $t3, 0($t0)         # Store the value 2 at the calculated address
     jr   $ra                 # Return from function
 
-
 play_game:
+    set_all_temp_registers_to_zero
     print_string(enter_move)        # Prompt user for move
     read_string                     # Read user input string
-    
+    move $t1, $a0
+
     # Check if the user wants to exit the game
     li   $t0, 88                    # ASCII value for 'X'
-    lb   $t1, 0($a0)                # Load first character of input string
     beq  $t1, $t0, end_game         # If 'X', exit the game
 
     # Check if the user wants to disable random tile generator (input '3')
@@ -324,43 +337,271 @@ play_game:
 
     li   $t0, 83                    # ASCII value for 'S' (swipe down)
     beq  $t1, $t0, swipe_down       # If 'S', swipe down
-
+    print_string(invalid_input) 
     # If the input is invalid, continue the game without any action
     j    play_game
 
 # Disable Random Generator
 disable_random_generator:
     li   $s5, 0                     # Set flag to 0 (disable random generator)
-    j    play_game                 # Continue game loop
+    j    play_game                  # Continue game loop
 
 # Enable Random Generator
 enable_random_generator:
     li   $s5, 1                     # Set flag to 1 (enable random generator)
-    j    play_game                 # Continue game loop
-    
-swipe_left:
-    # Handle swipe left action (you will need to implement the logic for moving tiles left)
-    jal perform_swipe_left
-    jal print_array                 # Update and print the grid
-    j    play_game
+    j    play_game                  # Continue game loop
+
 
 swipe_right:
-    # Handle swipe right action (implement logic for moving tiles right)
-    jal perform_swipe_right
-    jal print_array                 # Update and print the grid
-    j    play_game
+    li   $t0, 0               # Start with the first row index (0, 1, 2 for rows)
+
+swipe_right_row:
+    # Calculate the base address of the current row
+    mul $t9, $s3, 4
+    mul  $t1, $t0, $t9         # $t1 = row_index * 12 (3 integers * 4 bytes each)
+    add  $t2, $s4, $t1        # $t2 = base address + row offset (points to the row)
+
+    # Load the 3 values in the row into registers
+    lw   $t3, 0($t2)          # Load the leftmost value into $t3
+    lw   $t4, 4($t2)          # Load the middle value into $t4
+    lw   $t5, 8($t2)          # Load the rightmost value into $t5
+
+    # Step 1: Handle case where leftmost value needs to move to the rightmost slot
+    # If both middle and rightmost are zero, move the leftmost to rightmost
+    beq  $t4, $zero, check_rightmost
+    j    shift_and_merge
+
+check_rightmost:
+    beq  $t5, $zero, move_leftmost_to_rightmost   # If both middle and rightmost are zero, move leftmost to rightmost
+    j    shift_and_merge
+
+move_leftmost_to_rightmost:
+    move $t5, $t3             # Move leftmost to rightmost slot
+    li   $t3, 0               # Set leftmost to 0
+    li   $t4, 0               # Set middle to 0
+
+shift_and_merge:
+    # Step 2: Shift non-zero values to the right
+    # Use $a0, $a1, $a2 as temporary "array" for the shifted row
+    li   $a0, 0               # First slot (leftmost)
+    li   $a1, 0               # Second slot (middle)
+    li   $a2, 0               # Third slot (rightmost)
+
+    # Check each value from right to left and populate temporary slots
+    bne  $t5, $zero, store_t5
+    j    check_t4
+
+store_t5:
+    move $a2, $t5             # Place $t5 in the rightmost slot
+    j    check_t4
+
+check_t4:
+    bne  $t4, $zero, store_t4
+    j    check_t3
+
+store_t4:
+    # If $a2 is empty, move $t4 there; otherwise, place it in $a1
+    beq  $a2, $zero, store_t4_in_a2
+    move $a1, $t4
+    j    check_t3
+
+store_t4_in_a2:
+    move $a2, $t4             # Place $t4 in the rightmost slot
+    j    check_t3
+
+check_t3:
+    bne  $t3, $zero, store_t3
+    j    merge_values
+
+store_t3:
+    # If $a1 is empty, move $t3 there; otherwise, place it in $a0
+    beq  $a1, $zero, store_t3_in_a1
+    move $a0, $t3
+    j    merge_values
+
+store_t3_in_a1:
+    move $a1, $t3             # Place $t3 in the middle slot
+    j    merge_values
+
+# Step 3: Merge values
+merge_values:
+    # Check if $a2 and $a1 are the same, and merge if so
+    beq  $a2, $a1, merge_a2_a1
+    j    check_a1_a0
+
+merge_a2_a1:
+    add  $a2, $a2, $a1        # Merge $a2 and $a1
+    li   $a1, 0               # Clear $a1 (merged)
+
+    # After merging $a2 and $a1, shift $a0 into $a1 (if $a0 != 0)
+    bne  $a0, $zero, shift_a0_to_a1
+    j    check_a1_a0
+
+shift_a0_to_a1:
+    move $a1, $a0             # Move $a0 to $a1
+    li   $a0, 0               # Clear $a0
+    j    check_a1_a0
+
+check_a1_a0:
+    # Check if $a1 and $a0 are the same, and merge if so
+    beq  $a1, $a0, merge_a1_a0
+    j    store_back
+
+merge_a1_a0:
+    add  $a1, $a1, $a0        # Merge $a1 and $a0
+    li   $a0, 0               # Clear $a0 (merged)
+
+# Step 4: Store the values back in memory
+store_back:
+    sw   $a0, 0($t2)          # Store the leftmost value
+    sw   $a1, 4($t2)          # Store the middle value
+    sw   $a2, 8($t2)          # Store the rightmost value
+
+    # Move to the next row
+    addi $t0, $t0, 1          # Increment row index
+    move   $t6, $s3               # Total number of rows
+    bne  $t0, $t6, swipe_right_row
+
+    # After processing all rows, print the grid and return
+    jal random_tile_generator
+    jal  print_array          # Print the updated grid
+
+    j play_game
+
+
+
+
+swipe_left:
+    li   $t0, 0               # Start with the first row index (0, 1, 2 for rows)
+
+swipe_left_row:
+    # Calculate the base address of the current row
+    mul  $t9, $s3, 4
+    mul  $t1, $t0, $t9         # $t1 = row_index * 12 (3 integers * 4 bytes each)
+    add  $t2, $s4, $t1        # $t2 = base address + row offset (points to the row)
+
+    # Load the 3 values in the row into registers
+    lw   $t3, 0($t2)          # Load the leftmost value into $t3
+    lw   $t4, 4($t2)          # Load the middle value into $t4
+    lw   $t5, 8($t2)          # Load the rightmost value into $t5
+
+    # Step 1: Handle case where rightmost value needs to move to the leftmost slot
+    # If both middle and leftmost are zero, move the rightmost to leftmost
+    beq  $t4, $zero, check_leftmost
+    j    shift_and_merge_left
+
+check_leftmost:
+    beq  $t3, $zero, move_rightmost_to_leftmost   # If both middle and leftmost are zero, move rightmost to leftmost
+    j    shift_and_merge_left
+
+move_rightmost_to_leftmost:
+    move $t3, $t5             # Move rightmost to leftmost slot
+    li   $t5, 0               # Set rightmost to 0
+    li   $t4, 0               # Set middle to 0
+
+shift_and_merge_left:
+    # Step 2: Shift non-zero values to the left
+    # Use $a0, $a1, $a2 as temporary "array" for the shifted row
+    li   $a0, 0               # First slot (leftmost)
+    li   $a1, 0               # Second slot (middle)
+    li   $a2, 0               # Third slot (rightmost)
+
+    # Check each value from left to right and populate temporary slots
+    bne  $t3, $zero, store_t3_left
+    j    check_t4_left
+
+store_t3_left:
+    move $a0, $t3             # Place $t3 in the leftmost slot
+    j    check_t4_left
+
+check_t4_left:
+    bne  $t4, $zero, store_t4_left
+    j    check_t5_left
+
+store_t4_left:
+    # If $a0 is empty, move $t4 there; otherwise, place it in $a1
+    beq  $a0, $zero, store_t4_in_a0
+    move $a1, $t4
+    j    check_t5_left
+
+store_t4_in_a0:
+    move $a0, $t4             # Place $t4 in the leftmost slot
+    j    check_t5_left
+
+check_t5_left:
+    bne  $t5, $zero, store_t5_left
+    j    merge_values_left
+
+store_t5_left:
+    # If $a1 is empty, move $t5 there; otherwise, place it in $a2
+    beq  $a1, $zero, store_t5_in_a1
+    move $a2, $t5
+    j    merge_values_left
+
+store_t5_in_a1:
+    move $a1, $t5             # Place $t5 in the middle slot
+    j    merge_values_left
+
+# Step 3: Merge values
+merge_values_left:
+    # Check if $a0 and $a1 are the same, and merge if so
+    beq  $a0, $a1, merge_a0_a1_left
+    j    check_a1_a2_left
+
+merge_a0_a1_left:
+    add  $a0, $a0, $a1        # Merge $a0 and $a1
+    li   $a1, 0               # Clear $a1 (merged)
+
+    # After merging $a0 and $a1, shift $a2 into $a1 (if $a2 != 0)
+    bne  $a2, $zero, shift_a2_to_a1_left
+    j    check_a1_a2_left
+
+shift_a2_to_a1_left:
+    move $a1, $a2             # Move $a2 to $a1
+    li   $a2, 0               # Clear $a2
+    j    check_a1_a2_left
+
+check_a1_a2_left:
+    # Check if $a1 and $a2 are the same, and merge if so
+    beq  $a1, $a2, merge_a1_a2_left
+    j    store_back_left
+
+merge_a1_a2_left:
+    add  $a1, $a1, $a2        # Merge $a1 and $a2
+    li   $a2, 0               # Clear $a2 (merged)
+
+# Step 4: Store the values back in memory
+store_back_left:
+    sw   $a0, 0($t2)          # Store the leftmost value
+    sw   $a1, 4($t2)          # Store the middle value
+    sw   $a2, 8($t2)          # Store the rightmost value
+
+    # Move to the next row
+    addi $t0, $t0, 1          # Increment row index
+    move $t6, $s3             # Total number of rows
+    bne  $t0, $t6, swipe_left_row
+
+    # After processing all rows, print the grid and return
+    jal random_tile_generator
+    jal print_array           # Print the updated grid
+
+    j play_game
+
+
 
 swipe_up:
     # Handle swipe up action (implement logic for moving tiles up)
-    jal perform_swipe_up
-    jal print_array                 # Update and print the grid
-    j    play_game
+    exit
+    # jal perform_swipe_up
+    # jal print_array                 # Update and print the grid
+    # j    play_game
 
 swipe_down:
     # Handle swipe down action (implement logic for moving tiles down)
-    jal perform_swipe_down
-    jal print_array                 # Update and print the grid
-    j    play_game
+    exit
+    # jal perform_swipe_down
+    # jal print_array                 # Update and print the grid
+    # j    play_game
 
 end_game:
     exit

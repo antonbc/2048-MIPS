@@ -76,12 +76,13 @@
 
 .data
 menu_msg:              .asciiz "Choose [1] or [2]: \n[1] New Game \n[2] Start from a State \n"
+start_from_state_msg:  .asciiz "Enter a board configuration:\n"
 grid_line:             .asciiz "+---+---+---+\n"    
 cell_left_border:      .asciiz "|"                 
 cell_end_border:       .asciiz "|\n"              
 cell_space:            .asciiz " "  
 empty_cell:            .asciiz " "             
-enter_move:            .asciiz "Enter a move (A, D, W, S): "
+enter_move:            .asciiz "Enter a move (A, D, W, S, 3, 4): "
 win_msg:               .asciiz "Congratulations! You have reached the 512 tile!\n"
 lose_msg:              .asciiz "Game over..\n"
 invalid_input:         .asciiz "Invalid input. Try again.\n"
@@ -244,6 +245,7 @@ generate_two_index_end:
 
 
 start_from_state:
+    print_string(start_from_state_msg)
     li   $t0, 0              # Cell counter (initialize to 0)
     move $t1, $s4            # Base address of the grid in $s4
     mul  $t2, $s3, $s3       # Calculate total cells (n * n)
@@ -284,7 +286,13 @@ input_done:
     j play_game
 
 
+
+#===================================================================================================================
+#============================================= GAME MECHANICS ====================================================+=
+#===================================================================================================================
+
 play_game:
+    jal check_game_status
     set_all_temp_registers_to_zero
     print_string(enter_move)        # Prompt user for move
     read_string                     # Read user input string
@@ -799,6 +807,128 @@ store_back_down:
     jal  print_array          # Print the updated grid
 
     j play_game
+
+
+
+
+
+#==================== Win/Lose CHECKER ==============================
+
+check_game_status:
+    # Initialize variables
+    li   $t0, 0                # Start index (0)
+    li   $t1, 9                # Total number of cells (3x3 grid)
+
+# checking 512 working dont edit
+check_512_loop:
+    # Exit loop if all cells are checked
+    beq  $t0, $t1, game_over_check_done
+
+    # Load grid[t0] value
+    mul  $t3, $t0, 4           # Offset = index * 4
+    add  $t3, $s4, $t3         # Address = grid base + offset
+    lw   $t4, 0($t3)           # Load grid[t0] value into $t4
+
+    # If the current cell is 0, there is still space to play
+    beq  $t4, $zero, game_continues
+    beq  $t4, 512, win_game
+    add $t0, $t0, 1
+    j check_512_loop
+
+game_over_check_done:
+    li   $t0, 0                # Start index (0)
+    li   $t1, 9                # Total number of cells (3x3 grid)
+    
+check_top_neighbor:
+    li $t5, 0
+    sub $t5, $t0, 3           # $t5 = cell - n
+    bge  $t5, 3, has_top_neighbor  # If cell >= n (i.e., valid top neighbor)
+    j check_bottom_neighbor      # Skip if no valid top neighbor
+
+has_top_neighbor:
+    # Load the top neighbor value
+    mul  $t6, $t5, 4           # Offset = top index * 4
+    add  $t6, $s4, $t6         # Address = grid base + offset
+    lw   $t7, 0($t6)           # Load top neighbor value into $t7
+
+    # Check if the top neighbor has the same value
+    beq  $t4, $t7, game_continues   # If current cell value == top neighbor, game can continue
+    beq  $t7, $zero, game_continues   # if top is zero continue game
+
+check_bottom_neighbor:
+    li $t5, 0
+    add  $t5, $t0, 3           # $t5 = cell + n
+    blt  $t5, 6, has_bottom_neighbor  # If cell < n(n-1) or 6
+    j check_left_neighbor       # Skip if no valid bottom neighbor
+
+has_bottom_neighbor:
+    # Load the bottom neighbor value
+    mul  $t6, $t5, 4           # Offset = bottom index * 4
+    add  $t6, $s4, $t6         # Address = grid base + offset
+    lw   $t7, 0($t6)           # Load bottom neighbor value into $t7
+
+    # Check if the bottom neighbor has the same value
+    beq  $t4, $t7, game_continues   # If current cell value == bottom neighbor, game can continue
+    beq  $t7, $zero, game_continues   # if top is zero continue game
+
+check_left_neighbor:
+    li $t5, 0
+    sub $t5, $t0, 1           # $t5 = cell - 1
+    div  $t0, $t1               # cell % n
+    mfhi $t6                    # $t6 = cell % n
+    bnez $t6, has_left_neighbor  # If cell % 3 != 0, valid left neighbor
+    j check_right_neighbor      # Skip if no valid left neighbor
+
+has_left_neighbor:
+    # Load the left neighbor value
+    mul  $t6, $t5, 4           # Offset = left index * 4
+    add  $t6, $s4, $t6         # Address = grid base + offset
+    lw   $t7, 0($t6)           # Load left neighbor value into $t7
+
+    # Check if the left neighbor has the same value
+    beq  $t4, $t7, game_continues   # If current cell value == left neighbor, game can continue
+    beq  $t7, $zero, game_continues   # if top is zero continue game
+
+check_right_neighbor:
+    li $t5, 0
+    add  $t5, $t0, 1           # $t5 = cell + 1
+    div  $t5, $t1               # (cell + 1) % n
+    mfhi $t6                    # $t6 = (cell + 1) % 3
+    bnez $t6, has_right_neighbor  # If (cell + 1) % 3 != 0, valid right neighbor
+    j check_game_over_loop      # Skip if no valid right neighbor
+
+has_right_neighbor:
+    # Load the right neighbor value
+    mul  $t6, $t5, 4           # Offset = right index * 4
+    add  $t6, $s4, $t6         # Address = grid base + offset
+    lw   $t7, 0($t6)           # Load right neighbor value into $t7
+
+    # Check if the right neighbor has the same value
+    beq  $t4, $t7, game_continues   # If current cell value == right neighbor, game can continue
+    beq  $t7, $zero, game_continues   # if top is zero continue game
+    
+check_game_over_loop:
+    # Increment index to check the next cell
+    addi $t0, $t0, 1           # Increment index
+    bge  $t0, 9, game_over_check_done # If index >= 9, end game check
+    j check_game_over_loop      # Otherwise, check next cell
+
+game_over_check_done:
+    print_string(lose_msg)
+    exit
+
+game_continues:
+    jr $ra
+
+
+win_game:
+    print_string(win_msg)
+    exit
+
+
+
+
+
 
 
 

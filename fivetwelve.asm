@@ -87,7 +87,6 @@ win_msg:               .asciiz "Congratulations! You have reached the 512 tile!\
 lose_msg:              .asciiz "Game over..\n"
 invalid_input:         .asciiz "Invalid input. Try again.\n"
 newline:               .asciiz "\n"
-
 n:                     .word 3 # Grid size (can be changed to any value)
 
 .text
@@ -102,8 +101,10 @@ main:
     mul  $t1, $t0, $t0         # n * n (number of cells)
     mul  $t1, $t1, 4           # n * n * 4 (bytes per cell)
 
+    #addi $t1, $t1, $t1  #backup grid
+
     # Allocate space for the grid and the return address
-    addi $t1, $t1, 4           # Add 4 bytes for the return address
+    add $t1, $t1, 4           # Add 4 bytes for the return address
     subu $sp, $sp, $t1         # Adjust stack pointer to create space
     move $s4, $sp              # Base address of the grid is now in $s4
 
@@ -145,20 +146,20 @@ store_random_value:
     li   $t2, 2               # Load the value 2 again
     sw   $t2, 0($t1)          # Store 2 at the calculated address
 
-    # Save $ra before calling print_array
+    # Save $ra before calling print_grid
     addi $sp, $sp, -4         # Allocate space on the stack
     sw   $ra, 0($sp)          # Save the return address
 
-    # Call print_array
-    jal print_array
+    # Call print_grid
+    jal print_grid
 
-    # Restore $ra after print_array returns
+    # Restore $ra after print_grid returns
     lw   $ra, 0($sp)          # Restore the return address
     addi $sp, $sp, 4          # Deallocate stack space
 
     jr   $ra  
 
-print_array:
+print_grid:
     li   $t1, 0              # Row counter (initialize to 0)
     li   $t2, 0              # Cell counter (initialize to 0)
     move $t0, $s4            # Base address of grid (stored in $s4)
@@ -223,25 +224,7 @@ new_row:
     print_string(grid_line)
     jr $ra                    # Return from the function
 
-random_two_index:
-    # Generate two random unique indices within grid bounds
-    mul  $t2, $s3, $s3       # Calculate total cells n*n
-    print_string(newline)
-
-generate_first_index:
-    move   $a1, $t2
-    generate_random_number    # Generate random number
-    move $s1, $a0              # Store the first random index in $t5
-
-generate_second_index:
-    move   $a1, $t2
-    generate_random_number
-    move $s2, $a0              # Store the second random index in $t6
-    bne  $s2, $s1, generate_two_index_end  # Ensure unique indices
-    j    generate_second_index
-
-generate_two_index_end:
-    jr $ra
+ 
 
 
 
@@ -283,7 +266,7 @@ store_input:
 
 input_done:
     lw   $ra, 0($s4)         # Load return address
-    jal print_array
+    jal print_grid
     j play_game
 
 
@@ -352,11 +335,11 @@ generate_random_index:
 place_two:
     li   $t3, 2              # Load the value 2
     sw   $t3, 0($t0)         # Store the value 2 at the calculated address
-    jal print_array                 # Return from function
+    jal print_grid                 # Return from function
     j play_game
 
 none_merged:
-    jal print_array
+    jal print_grid
     j play_game
 
 # Disable Random Generator
@@ -374,7 +357,6 @@ enable_random_generator:
 # MAAYOS
 swipe_right:
     li   $t0, 0               # Start with the first row index (0, 1, 2 for rows)
-    li   $t8, 0 # check if a cell merges
 
 swipe_right_row:
     # Calculate the base address of the current row
@@ -495,7 +477,7 @@ store_back:
 
     # After processing all rows, print the grid and return
     beq $s5, 4, random_tile_generator
-    jal  print_array          # Print the updated grid
+    jal  print_grid          # Print the updated grid
 
     j play_game
 
@@ -504,7 +486,7 @@ store_back:
 #sira sira amp
 swipe_left:
     li   $t0, 0               # Start with the first row index (0, 1, 2 for rows)
-    li   $t8, 0 # check if a cell merges
+    li   $t8, 0
 
 swipe_left_row:
     # Calculate the base address of the current row
@@ -522,16 +504,9 @@ swipe_left_row:
     beq  $t4, $zero, check_leftmost
     j    shift_and_merge_left
 
-#$t3 = leftmost
-#$t4 = middle
-#$t5 = rightmost
 check_leftmost:
-    beq  $t3, $zero, check_rightmost_nonzero  # If both middle and leftmost are zero, move rightmost to leftmost
+    beq  $t3, $zero, move_rightmost_to_leftmost   # If both middle and leftmost are zero, move rightmost to leftmost
     j    shift_and_merge_left
-
-check_rightmost_nonzero:
-    bne $t5, $zero, move_leftmost_to_rightmost
-    j shift_and_merge_left
 
 move_rightmost_to_leftmost:
     li $t8, 1
@@ -591,8 +566,7 @@ merge_values_left:
 merge_a0_a1_left:
     add  $a0, $a0, $a1        # Merge $a0 and $a1
     li   $a1, 0               # Clear $a1 (merged)
-    li $t8, 1   # a pair of cells merged
-
+    li $t8, 1
     # After merging $a0 and $a1, shift $a2 into $a1 (if $a2 != 0)
     bne  $a2, $zero, shift_a2_to_a1_left
     j    check_a1_a2_left
@@ -610,7 +584,7 @@ check_a1_a2_left:
 merge_a1_a2_left:
     add  $a1, $a1, $a2        # Merge $a1 and $a2
     li   $a2, 0               # Clear $a2 (merged)
-    li $t8, 1   # a pair of cells merged
+    li $t8, 1
 
 # Step 4: Store the values back in memory
 store_back_left:
@@ -625,7 +599,7 @@ store_back_left:
 
     # After processing all rows, print the grid and return
     beq $s5, 4, random_tile_generator
-    jal  print_array          # Print the updated grid
+    jal  print_grid          # Print the updated grid
 
     j play_game
 
@@ -749,7 +723,7 @@ store_back_up:
     beq $s5, 4, random_tile_generator
 
     # Print the grid and return to the game loop
-    jal  print_array
+    jal  print_grid
     j    play_game
 
 
@@ -875,7 +849,7 @@ store_back_down:
 
     # After processing all rows, print the grid and return
     beq $s5, 4, random_tile_generator
-    jal  print_array          # Print the updated grid
+    jal  print_grid          # Print the updated grid
 
     j play_game
 

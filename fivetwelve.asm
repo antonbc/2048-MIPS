@@ -144,20 +144,20 @@ store_random_value:
     li   $t2, 2               # Load the value 2 again
     sw   $t2, 0($t1)          # Store 2 at the calculated address
 
-    # Save $ra before calling print_array
+    # Save $ra before calling print_grid
     addi $sp, $sp, -4         # Allocate space on the stack
     sw   $ra, 0($sp)          # Save the return address
 
-    # Call print_array
-    jal print_array
+    # Call print_grid
+    jal print_grid
 
-    # Restore $ra after print_array returns
+    # Restore $ra after print_grid returns
     lw   $ra, 0($sp)          # Restore the return address
     addi $sp, $sp, 4          # Deallocate stack space
 
     jr   $ra  
 
-print_array:
+print_grid:
     li   $t1, 0              # Row counter (initialize to 0)
     li   $t2, 0              # Cell counter (initialize to 0)
     move $t0, $s4            # Base address of grid (stored in $s4)
@@ -282,7 +282,7 @@ store_input:
 
 input_done:
     lw   $ra, 0($s4)         # Load return address
-    jal print_array
+    jal print_grid
     j play_game
 
 
@@ -350,7 +350,7 @@ generate_random_index:
 place_two:
     li   $t3, 2              # Load the value 2
     sw   $t3, 0($t0)         # Store the value 2 at the calculated address
-    jal print_array                 # Return from function
+    jal print_grid                 # Return from function
     j play_game
 
 
@@ -479,7 +479,7 @@ store_back:
 
     # After processing all rows, print the grid and return
     beq $s5, 4, random_tile_generator
-    jal  print_array          # Print the updated grid
+    jal  print_grid          # Print the updated grid
 
     j play_game
 
@@ -598,7 +598,7 @@ store_back_left:
 
     # After processing all rows, print the grid and return
     beq $s5, 4, random_tile_generator
-    jal  print_array          # Print the updated grid
+    jal  print_grid          # Print the updated grid
 
     j play_game
 
@@ -701,7 +701,7 @@ store_back_up:
 
     # After processing all columns, print the grid and return
     beq $s5, 4, random_tile_generator
-    jal  print_array          # Print the updated grid
+    jal  print_grid          # Print the updated grid
 
     j play_game
 
@@ -804,7 +804,7 @@ store_back_down:
 
     # After processing all columns, print the grid and return
     beq $s5, 4, random_tile_generator
-    jal  print_array          # Print the updated grid
+    jal  print_grid          # Print the updated grid
 
     j play_game
 

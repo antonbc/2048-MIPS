@@ -89,6 +89,7 @@ invalid_input:         .asciiz "Invalid input. Try again.\n"
 newline:               .asciiz "\n"
 
 n:                     .word 3 # Grid size (can be changed to any value)
+backup_grid:            .space 36
 
 .text
 main:
@@ -137,7 +138,6 @@ store_random_value:
     add  $t0, $s4, $t0        # $t0 = base address ($s4) + offset
     li   $t2, 2               # Load the value 2
     sw   $t2, 0($t0)          # Store 2 at the calculated address
-
     # Store 2 at the location indexed by $s2
     mul  $t1, $s2, 4          # $t1 = $s2 * 4 (byte offset)
     add  $t1, $s4, $t1        # $t1 = base address ($s4) + offset
@@ -286,6 +286,72 @@ input_done:
     j play_game
 
 
+copy_grid_to_backup:
+    li   $t0, 0               # t0 is the loop counter (i)
+    li   $t3, 0               # t3 will be used to calculate the row-major index for the backup grid
+
+copy_grid_loop:
+    # Check if we have processed all n * n cells
+    mul  $t1, $s3, $s3         # t1 = n * n (total grid cells)
+    bge  $t0, $t1, copy_done   # If i >= n * n, exit loop
+
+    # Calculate the byte offset for the grid and backup_grid
+    mul  $t2, $t0, 4           # t2 = i * 4 (byte offset for grid)
+    add  $t4, $s4, $t2         # t4 = base address of the grid + offset (grid address)
+    lw   $t5, 0($t4)           # t5 = grid[i] (value at grid[i])
+
+    # Calculate the byte offset for the backup_grid
+    add  $t2, $t0, $t0         # t2 = i (use i as the index for backup_grid too, since it's the same size)
+    mul  $t2, $t2, 4           # t2 = i * 4 (byte offset for backup grid)
+    la   $t6, backup_grid      # Load address of backup_grid
+    add  $t6, $t6, $t2         # t6 = base address of backup_grid + offset
+    sw   $t5, 0($t6)           # Store the value in the backup grid at the same index
+
+    # Increment the loop counter
+    addi $t0, $t0, 1
+    j copy_grid_loop
+
+copy_done:
+    jr   $ra                   # Return to caller
+
+
+
+
+compare_grids:
+    li   $t0, 0               # t0 is the loop counter (i), initialized to 0
+
+compare_loop:
+    # Check if we've processed all n * n cells
+    mul  $t1, $s3, $s3         # t1 = n * n (total grid cells)
+    bge  $t0, $t1, compare_done # If i >= n * n, exit loop
+
+    # Calculate byte offset for grid and backup_grid
+    mul  $t2, $t0, 4           # t2 = i * 4 (byte offset for grid)
+    add  $t4, $s4, $t2         # t4 = base address of grid + offset (grid address)
+    lw   $t5, 0($t4)           # t5 = grid[i] (value at grid[i])
+
+    # Calculate byte offset for backup_grid
+    add  $t2, $t0, $t0         # t2 = i (use i as the index for backup_grid too)
+    mul  $t2, $t2, 4           # t2 = i * 4 (byte offset for backup grid)
+    la   $t6, backup_grid      # Load address of backup_grid
+    add  $t6, $t6, $t2         # t6 = base address of backup_grid + offset
+    lw   $t7, 0($t6)           # t7 = backup_grid[i] (value at backup_grid[i])
+
+    # Compare grid[i] with backup_grid[i]
+    bne  $t5, $t7, compare_fail # If grid[i] != backup_grid[i], jump to fail
+
+    # Increment the loop counter
+    addi $t0, $t0, 1
+    j compare_loop
+
+compare_fail:
+    li   $t8, 1               # Set $t8 to 1 (indicating grids are different)
+    jr   $ra                   # Return to caller
+
+compare_done:
+    li   $t8, 0
+    jr   $ra                   # Return to caller (grids are the same, $t8 remains unchanged)
+
 
 #===================================================================================================================
 #============================================= GAME MECHANICS ====================================================+=
@@ -293,6 +359,7 @@ input_done:
 
 play_game:
     jal check_game_status
+    jal copy_grid_to_backup
     set_all_temp_registers_to_zero
     print_string(enter_move)        # Prompt user for move
     read_string                     # Read user input string

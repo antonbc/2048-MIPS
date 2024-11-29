@@ -87,11 +87,11 @@ win_msg:               .asciiz "Congratulations! You have reached the 512 tile!\
 lose_msg:              .asciiz "Game over..\n"
 invalid_input:         .asciiz "Invalid input. Try again.\n"
 newline:               .asciiz "\n"
+
 n:                     .word 3 # Grid size (can be changed to any value)
 
 .text
 main:
-    set_all_registers_to_zero
     li $s5, 4
     la   $a0, n                # Load address of n
     lw   $t0, 0($a0)           # Load grid size into $t0
@@ -101,10 +101,8 @@ main:
     mul  $t1, $t0, $t0         # n * n (number of cells)
     mul  $t1, $t1, 4           # n * n * 4 (bytes per cell)
 
-    #addi $t1, $t1, $t1  #backup grid
-
     # Allocate space for the grid and the return address
-    add $t1, $t1, 4           # Add 4 bytes for the return address
+    addi $t1, $t1, 4           # Add 4 bytes for the return address
     subu $sp, $sp, $t1         # Adjust stack pointer to create space
     move $s4, $sp              # Base address of the grid is now in $s4
 
@@ -146,20 +144,20 @@ store_random_value:
     li   $t2, 2               # Load the value 2 again
     sw   $t2, 0($t1)          # Store 2 at the calculated address
 
-    # Save $ra before calling print_grid
+    # Save $ra before calling print_array
     addi $sp, $sp, -4         # Allocate space on the stack
     sw   $ra, 0($sp)          # Save the return address
 
-    # Call print_grid
-    jal print_grid
+    # Call print_array
+    jal print_array
 
-    # Restore $ra after print_grid returns
+    # Restore $ra after print_array returns
     lw   $ra, 0($sp)          # Restore the return address
     addi $sp, $sp, 4          # Deallocate stack space
 
     jr   $ra  
 
-print_grid:
+print_array:
     li   $t1, 0              # Row counter (initialize to 0)
     li   $t2, 0              # Cell counter (initialize to 0)
     move $t0, $s4            # Base address of grid (stored in $s4)
@@ -224,7 +222,25 @@ new_row:
     print_string(grid_line)
     jr $ra                    # Return from the function
 
- 
+random_two_index:
+    # Generate two random unique indices within grid bounds
+    mul  $t2, $s3, $s3       # Calculate total cells n*n
+    print_string(newline)
+
+generate_first_index:
+    move   $a1, $t2
+    generate_random_number    # Generate random number
+    move $s1, $a0              # Store the first random index in $t5
+
+generate_second_index:
+    move   $a1, $t2
+    generate_random_number
+    move $s2, $a0              # Store the second random index in $t6
+    bne  $s2, $s1, generate_two_index_end  # Ensure unique indices
+    j    generate_second_index
+
+generate_two_index_end:
+    jr $ra
 
 
 
@@ -266,7 +282,7 @@ store_input:
 
 input_done:
     lw   $ra, 0($s4)         # Load return address
-    jal print_grid
+    jal print_array
     j play_game
 
 
@@ -312,7 +328,6 @@ play_game:
 
 # working code
 random_tile_generator:
-    beq $t8, $zero, none_merged
     mul  $t2, $s3, $s3       # Calculate total cells n*n
     move $a1, $t2            # Set $a1 to total number of cells (n * n)
     
@@ -335,12 +350,9 @@ generate_random_index:
 place_two:
     li   $t3, 2              # Load the value 2
     sw   $t3, 0($t0)         # Store the value 2 at the calculated address
-    jal print_grid                 # Return from function
+    jal print_array                 # Return from function
     j play_game
 
-none_merged:
-    jal print_grid
-    j play_game
 
 # Disable Random Generator
 disable_random_generator:
@@ -354,7 +366,7 @@ enable_random_generator:
 
 
 
-# MAAYOS
+
 swipe_right:
     li   $t0, 0               # Start with the first row index (0, 1, 2 for rows)
 
@@ -374,19 +386,11 @@ swipe_right_row:
     beq  $t4, $zero, check_rightmost
     j    shift_and_merge
 
-#$t3 = leftmost
-#$t4 = middle
-#$t5 = rightmost
 check_rightmost:
-    beq  $t5, $zero, check_leftmost_nonzero   # If both middle and rightmost are zero, move leftmost to rightmost
+    beq  $t5, $zero, move_leftmost_to_rightmost   # If both middle and rightmost are zero, move leftmost to rightmost
     j    shift_and_merge
 
-check_leftmost_nonzero:
-    bne $t3, $zero, move_leftmost_to_rightmost
-    j shift_and_merge
-
 move_leftmost_to_rightmost:
-    li $t8, 1
     move $t5, $t3             # Move leftmost to rightmost slot
     li   $t3, 0               # Set leftmost to 0
     li   $t4, 0               # Set middle to 0
@@ -399,7 +403,7 @@ shift_and_merge:
     li   $a2, 0               # Third slot (rightmost)
 
     # Check each value from right to left and populate temporary slots
-    bne  $t5, $zero, store_t5 # if rightmost is non zero retain slot
+    bne  $t5, $zero, store_t5
     j    check_t4
 
 store_t5:
@@ -407,7 +411,7 @@ store_t5:
     j    check_t4
 
 check_t4:
-    bne  $t4, $zero, store_t4 # if middle is not zero retain slot
+    bne  $t4, $zero, store_t4
     j    check_t3
 
 store_t4:
@@ -443,7 +447,6 @@ merge_values:
 merge_a2_a1:
     add  $a2, $a2, $a1        # Merge $a2 and $a1
     li   $a1, 0               # Clear $a1 (merged)
-    li $t8, 1   # a pair of cells merged
 
     # After merging $a2 and $a1, shift $a0 into $a1 (if $a0 != 0)
     bne  $a0, $zero, shift_a0_to_a1
@@ -452,17 +455,16 @@ merge_a2_a1:
 shift_a0_to_a1:
     move $a1, $a0             # Move $a0 to $a1
     li   $a0, 0               # Clear $a0
+    j    check_a1_a0
 
 check_a1_a0:
     # Check if $a1 and $a0 are the same, and merge if so
-    beq  $a0, $zero, store_back
     beq  $a1, $a0, merge_a1_a0
     j    store_back
 
 merge_a1_a0:
     add  $a1, $a1, $a0        # Merge $a1 and $a0
     li   $a0, 0               # Clear $a0 (merged)
-    li $t8, 1   # a pair of cells merged
 
 # Step 4: Store the values back in memory
 store_back:
@@ -477,16 +479,15 @@ store_back:
 
     # After processing all rows, print the grid and return
     beq $s5, 4, random_tile_generator
-    jal  print_grid          # Print the updated grid
+    jal  print_array          # Print the updated grid
 
     j play_game
 
 
 
-#sira sira amp
+
 swipe_left:
     li   $t0, 0               # Start with the first row index (0, 1, 2 for rows)
-    li   $t8, 0
 
 swipe_left_row:
     # Calculate the base address of the current row
@@ -509,7 +510,6 @@ check_leftmost:
     j    shift_and_merge_left
 
 move_rightmost_to_leftmost:
-    li $t8, 1
     move $t3, $t5             # Move rightmost to leftmost slot
     li   $t5, 0               # Set rightmost to 0
     li   $t4, 0               # Set middle to 0
@@ -566,7 +566,7 @@ merge_values_left:
 merge_a0_a1_left:
     add  $a0, $a0, $a1        # Merge $a0 and $a1
     li   $a1, 0               # Clear $a1 (merged)
-    li $t8, 1
+
     # After merging $a0 and $a1, shift $a2 into $a1 (if $a2 != 0)
     bne  $a2, $zero, shift_a2_to_a1_left
     j    check_a1_a2_left
@@ -574,17 +574,16 @@ merge_a0_a1_left:
 shift_a2_to_a1_left:
     move $a1, $a2             # Move $a2 to $a1
     li   $a2, 0               # Clear $a2
+    j    check_a1_a2_left
 
 check_a1_a2_left:
     # Check if $a1 and $a2 are the same, and merge if so
-    beq $a2, $zero, store_back_left
     beq  $a1, $a2, merge_a1_a2_left
     j    store_back_left
 
 merge_a1_a2_left:
     add  $a1, $a1, $a2        # Merge $a1 and $a2
     li   $a2, 0               # Clear $a2 (merged)
-    li $t8, 1
 
 # Step 4: Store the values back in memory
 store_back_left:
@@ -599,17 +598,17 @@ store_back_left:
 
     # After processing all rows, print the grid and return
     beq $s5, 4, random_tile_generator
-    jal  print_grid          # Print the updated grid
+    jal  print_array          # Print the updated grid
 
     j play_game
 
 
 
+
 swipe_up:
     li   $t0, 0               # Start with the first column index (0, 1, 2 for columns)
-    li   $t8, 0               # Reset movement/merge flag
 
-swipe_up_column:
+swipe_up_column_up:
     # Calculate the base address of the current column
     mul  $t1, $t0, 4          # $t1 = column_index * 4 (4 bytes per element)
     add  $t2, $s4, $t1        # $t2 = base address + column offset (points to the column)
@@ -619,94 +618,75 @@ swipe_up_column:
     lw   $t4, 12($t2)         # Middle value
     lw   $t5, 24($t2)         # Bottom value
 
+    # Step 1: Shift non-zero values upwards
+    li   $a0, 0               # Clear temporary slots (top)
+    li   $a1, 0               # Clear temporary slots (middle)
+    li   $a2, 0               # Clear temporary slots (bottom)
 
-    # Check $t3 (topmost value) first
-    beq $t4, $zero, check_topmost
-    j shift_and_merge_top
+    # Check each value from top to bottom and shift to temporary slots
+    bne  $t3, $zero, shift_t3_up
+    j    check_t4_up
 
-#$t3 = top
-#$t4 = mid
-#$t5 = bot
-check_topmost:
-    beq $t3, $zero, check_bottommost_nonzero
-    j shift_and_merge_top
-
-check_bottommost_nonzero:
-    bne $t5, $zero, move_bottommost_to_topmost
-    j shift_and_merge_top
-
-move_bottommost_to_topmost:
-    li $t8, 1
-    move $t3, $t5             # Move bottom to top
-    li   $t5, 0               # Set leftmost to 0
-    li   $t4, 0               # Set middle to 0
-
-shift_and_merge_top:
-    li   $a0, 0               # Temporary slot for topmost
-    li   $a1, 0               # Temporary slot for middle
-    li   $a2, 0               # Temporary slot for bottommost
-
-    bne $t3, $zero, store_t3_up
-    j check_t4_up
-
-store_t3_up:
-    move $a0, $t3 
+shift_t3_up:
+    move $a0, $t3             # Place $t3 in the top slot
     j    check_t4_up
 
 check_t4_up:
-    bne  $t4, $zero, store_t4_up
+    bne  $t4, $zero, shift_t4_up
     j    check_t5_up
 
-store_t4_up:
-    li $t8, 1
-    beq  $a0, $zero, store_t4_in_a0_up
-    move $a1, $t4
+shift_t4_up:
+    beq  $a0, $zero, store_t4_top_up
+    move $a1, $t4             # Place $t4 in the second slot
     j    check_t5_up
 
-store_t4_in_a0_up:
-    move $a0, $t4             
+store_t4_top_up:
+    move $a0, $t4             # Place $t4 in the top slot
     j    check_t5_up
 
 check_t5_up:
-    bne  $t5, $zero, store_t5_up
+    bne  $t5, $zero, shift_t5_up
     j    merge_values_up
 
-store_t5_up:
-    # Place $t5 in the lowest available slot
-    beq  $a1, $zero, store_t5_in_a1_up
-    move $a2, $t5
+shift_t5_up:
+    beq  $a0, $zero, store_t5_top_up
+    beq  $a1, $zero, store_t5_middle_up
+    move $a2, $t5             # Place $t5 in the bottom slot
     j    merge_values_up
 
-store_t5_in_a1_up:
+store_t5_top_up:
+    move $a0, $t5             # Place $t5 in the top slot
+    j    merge_values_up
+
+store_t5_middle_up:
     move $a1, $t5             # Place $t5 in the middle slot
     j    merge_values_up
 
 # Step 2: Merge values
 merge_values_up:
+    # Merge top two values if they are equal
     beq  $a0, $a1, merge_a0_a1_up
     j    check_a1_a2_up
 
 merge_a0_a1_up:
     add  $a0, $a0, $a1        # Merge $a0 and $a1
     li   $a1, 0               # Clear $a1
-    li   $t8, 1               # Mark merge detected
     bne  $a2, $zero, shift_a2_to_a1_up
-    j    check_a1_a2_up
+    j    store_back_up
 
 shift_a2_to_a1_up:
-    move $a1, $a2             # Move $a2 to $a1
+    move $a1, $a2             # Shift $a2 into $a1
     li   $a2, 0               # Clear $a2
+    j    store_back_up
 
 check_a1_a2_up:
-    # Check if $a1 and $a2 are equal and merge if so
-    beq $a1, $zero, store_back_up
     beq  $a1, $a2, merge_a1_a2_up
     j    store_back_up
 
 merge_a1_a2_up:
     add  $a1, $a1, $a2        # Merge $a1 and $a2
     li   $a2, 0               # Clear $a2
-    li   $t8, 1               # Mark merge detected
+    j    store_back_up
 
 # Step 3: Store the values back in memory
 store_back_up:
@@ -717,24 +697,21 @@ store_back_up:
     # Move to the next column
     addi $t0, $t0, 1          # Increment column index
     li   $t6, 3               # Total number of columns (3)
-    bne  $t0, $t6, swipe_up_column
+    bne  $t0, $t6, swipe_up_column_up
 
-    # Generate a new tile if any movement or merge occurred
+    # After processing all columns, print the grid and return
     beq $s5, 4, random_tile_generator
+    jal  print_array          # Print the updated grid
 
-    # Print the grid and return to the game loop
-    jal  print_grid
-    j    play_game
-
+    j play_game
 
 
 
 
 swipe_down:
     li   $t0, 0               # Start with the first column index (0, 1, 2 for columns)
-    li   $t8, 0 # check if a cell merges
 
-swipe_down_column:
+swipe_down_column_down:
     # Calculate the base address of the current column
     mul  $t1, $t0, 4          # $t1 = column_index * 4 (4 bytes per element)
     add  $t2, $s4, $t1        # $t2 = base address + column offset (points to the column)
@@ -744,114 +721,93 @@ swipe_down_column:
     lw   $t4, 12($t2)         # Middle value
     lw   $t5, 24($t2)         # Bottom value
 
-
-    # Check each value from bottom to top and shift to temporary slots
-    beq $t4, $zero, check_bottommost
-    j shift_and_merge_bot
-
-#$t3 = top
-#$t4 = mid
-#$t5 = bot
-check_bottommost:
-    beq $t5, $zero, check_topmost_nonzero
-    j shift_and_merge_bot
-
-check_topmost_nonzero:
-    bne $t3, $zero, move_topmost_to_bottommost
-    j shift_and_merge_bot
-
-move_topmost_to_bottommost:
-    li $t8, 1
-    move $t5, $t3             # Move leftmost to rightmost slot
-    li   $t3, 0               # Set leftmost to 0
-    li   $t4, 0               # Set middle to 0
-
-shift_and_merge_bot:
-        # Step 1: Shift non-zero values downward
+    # Step 1: Shift non-zero values downward
     li   $a0, 0               # Clear temporary slots (top)
     li   $a1, 0               # Clear temporary slots (middle)
     li   $a2, 0               # Clear temporary slots (bottom)
 
-    bne  $t5, $zero, store_t5_down # if rightmost is non zero retain slot
+    # Check each value from bottom to top and shift to temporary slots
+    bne  $t5, $zero, shift_t5_down
     j    check_t4_down
 
-store_t5_down:
+shift_t5_down:
     move $a2, $t5             # Place $t5 in the bottom slot
     j    check_t4_down
 
 check_t4_down:
-    bne  $t4, $zero, store_t4_down
+    bne  $t4, $zero, shift_t4_down
     j    check_t3_down
 
-store_t4_down:
-    beq  $a2, $zero, store_t4_in_a2_down
-    move $a1, $t4            # Place $t4 in the middle slot
+shift_t4_down:
+    beq  $a2, $zero, store_t4_bottom_down
+    move $a1, $t4             # Place $t4 in the middle slot
     j    check_t3_down
 
-store_t4_in_a2_down:
-    move $a2, $t4             # Place $t4 in the rightmost slot
+store_t4_bottom_down:
+    move $a2, $t4             # Place $t4 in the bottom slot
     j    check_t3_down
 
 check_t3_down:
-    bne  $t3, $zero, store_t3_down
+    bne  $t3, $zero, shift_t3_down
     j    merge_values_down
 
-store_t3_down:
-    # If $a1 is empty, move $t3 there; otherwise, place it in $a0
-    beq  $a1, $zero, store_t3_in_a1_down
-    move $a0, $t3
+shift_t3_down:
+    beq  $a2, $zero, store_t3_bottom_down
+    beq  $a1, $zero, store_t3_middle_down
+    move $a0, $t3             # Place $t3 in the top slot
     j    merge_values_down
 
-store_t3_in_a1_down:
+store_t3_bottom_down:
+    move $a2, $t3             # Place $t3 in the bottom slot
+    j    merge_values_down
+
+store_t3_middle_down:
     move $a1, $t3             # Place $t3 in the middle slot
     j    merge_values_down
 
-# Step 3: Merge values
+# Step 2: Merge values downward
 merge_values_down:
-    # Check if $a2 and $a1 are the same, and merge if so
+    # Merge bottom two values if they are equal
     beq  $a2, $a1, merge_a2_a1_down
     j    check_a1_a0_down
 
 merge_a2_a1_down:
     add  $a2, $a2, $a1        # Merge $a2 and $a1
-    li   $a1, 0               # Clear $a1 (merged)
-    li $t8, 1   # a pair of cells merged
-
-    # After merging $a2 and $a1, shift $a0 into $a1 (if $a0 != 0)
+    li   $a1, 0               # Clear $a1
     bne  $a0, $zero, shift_a0_to_a1_down
-    j    check_a1_a0_down
+    j    store_back_down
 
 shift_a0_to_a1_down:
-    move $a1, $a0             # Move $a0 to $a1
+    move $a1, $a0             # Shift $a0 into $a1
     li   $a0, 0               # Clear $a0
+    j    store_back_down
 
 check_a1_a0_down:
-    # Check if $a1 and $a0 are the same, and merge if so
-    beq  $a0, $zero, store_back_down
     beq  $a1, $a0, merge_a1_a0_down
     j    store_back_down
 
 merge_a1_a0_down:
     add  $a1, $a1, $a0        # Merge $a1 and $a0
-    li   $a0, 0               # Clear $a0 (merged)
-    li $t8, 1   # a pair of cells merged
+    li   $a0, 0               # Clear $a0
+    j    store_back_down
 
-# Step 4: Store the values back in memory
+# Step 3: Store the values back in memory
 store_back_down:
-    sw   $a0, 0($t2)          # Store the leftmost value
-    sw   $a1, 12($t2)          # Store the middle value
-    sw   $a2, 24($t2)          # Store the rightmost value
+    sw   $a0, 0($t2)          # Store the topmost value
+    sw   $a1, 12($t2)         # Store the middle value
+    sw   $a2, 24($t2)         # Store the bottommost value
 
-    # Move to the next row
-    addi $t0, $t0, 1          # Increment row index
-    move   $t6, $s3               # Total number of rows
-    bne  $t0, $t6, swipe_down_column
+    # Move to the next column
+    addi $t0, $t0, 1          # Increment column index
+    li   $t6, 3               # Total number of columns (3)
+    bne  $t0, $t6, swipe_down_column_down
 
-    # After processing all rows, print the grid and return
+    # After processing all columns, print the grid and return
     beq $s5, 4, random_tile_generator
-    jal  print_grid          # Print the updated grid
+    jal  print_array          # Print the updated grid
 
     j play_game
+
 
 
 
@@ -863,88 +819,111 @@ check_game_status:
     li   $t0, 0                # Start index (0)
     li   $t1, 9                # Total number of cells (3x3 grid)
 
-check_cells_loop:
+# checking 512 working dont edit
+check_512_loop:
     # Exit loop if all cells are checked
-    beq  $t0, $t1, check_neighbors_loop
+    beq  $t0, $t1, game_over_check_done
 
-    # Load grid[$t0] value
+    # Load grid[t0] value
     mul  $t3, $t0, 4           # Offset = index * 4
     add  $t3, $s4, $t3         # Address = grid base + offset
-    lw   $t4, 0($t3)           # Load grid[$t0] value into $t4
+    lw   $t4, 0($t3)           # Load grid[t0] value into $t4
 
     # If the current cell is 0, there is still space to play
     beq  $t4, $zero, game_continues
-    beq  $t4, 512, win_game    # If cell value is 512, player wins
+    beq  $t4, 512, win_game
+    add $t0, $t0, 1
+    j check_512_loop
 
+game_over_check_done:
+    li   $t0, 0                # Start index (0)
+    li   $t1, 9                # Total number of cells (3x3 grid)
+    
+check_top_neighbor:
+    li $t5, 0
+    sub $t5, $t0, 3           # $t5 = cell - n
+    bge  $t5, 3, has_top_neighbor  # If cell >= n (i.e., valid top neighbor)
+    j check_bottom_neighbor      # Skip if no valid top neighbor
+
+has_top_neighbor:
+    # Load the top neighbor value
+    mul  $t6, $t5, 4           # Offset = top index * 4
+    add  $t6, $s4, $t6         # Address = grid base + offset
+    lw   $t7, 0($t6)           # Load top neighbor value into $t7
+
+    # Check if the top neighbor has the same value
+    beq  $t4, $t7, game_continues   # If current cell value == top neighbor, game can continue
+    beq  $t7, $zero, game_continues   # if top is zero continue game
+
+check_bottom_neighbor:
+    li $t5, 0
+    add  $t5, $t0, 3           # $t5 = cell + n
+    blt  $t5, 6, has_bottom_neighbor  # If cell < n(n-1) or 6
+    j check_left_neighbor       # Skip if no valid bottom neighbor
+
+has_bottom_neighbor:
+    # Load the bottom neighbor value
+    mul  $t6, $t5, 4           # Offset = bottom index * 4
+    add  $t6, $s4, $t6         # Address = grid base + offset
+    lw   $t7, 0($t6)           # Load bottom neighbor value into $t7
+
+    # Check if the bottom neighbor has the same value
+    beq  $t4, $t7, game_continues   # If current cell value == bottom neighbor, game can continue
+    beq  $t7, $zero, game_continues   # if top is zero continue game
+
+check_left_neighbor:
+    li $t5, 0
+    sub $t5, $t0, 1           # $t5 = cell - 1
+    div  $t0, $t1               # cell % n
+    mfhi $t6                    # $t6 = cell % n
+    bnez $t6, has_left_neighbor  # If cell % 3 != 0, valid left neighbor
+    j check_right_neighbor      # Skip if no valid left neighbor
+
+has_left_neighbor:
+    # Load the left neighbor value
+    mul  $t6, $t5, 4           # Offset = left index * 4
+    add  $t6, $s4, $t6         # Address = grid base + offset
+    lw   $t7, 0($t6)           # Load left neighbor value into $t7
+
+    # Check if the left neighbor has the same value
+    beq  $t4, $t7, game_continues   # If current cell value == left neighbor, game can continue
+    beq  $t7, $zero, game_continues   # if top is zero continue game
+
+check_right_neighbor:
+    li $t5, 0
+    add  $t5, $t0, 1           # $t5 = cell + 1
+    div  $t5, $t1               # (cell + 1) % n
+    mfhi $t6                    # $t6 = (cell + 1) % 3
+    bnez $t6, has_right_neighbor  # If (cell + 1) % 3 != 0, valid right neighbor
+    j check_game_over_loop      # Skip if no valid right neighbor
+
+has_right_neighbor:
+    # Load the right neighbor value
+    mul  $t6, $t5, 4           # Offset = right index * 4
+    add  $t6, $s4, $t6         # Address = grid base + offset
+    lw   $t7, 0($t6)           # Load right neighbor value into $t7
+
+    # Check if the right neighbor has the same value
+    beq  $t4, $t7, game_continues   # If current cell value == right neighbor, game can continue
+    beq  $t7, $zero, game_continues   # if top is zero continue game
+    
+check_game_over_loop:
     # Increment index to check the next cell
-    addi $t0, $t0, 1
-    j check_cells_loop         # Repeat for the next cell
+    addi $t0, $t0, 1           # Increment index
+    bge  $t0, 9, check_game_over_done # If index >= 9, end game check
+    j check_game_over_loop      # Otherwise, check next cell
 
-check_neighbors_loop:
-    li   $t0, 0                # Reset index for neighbor checks
-
-neighbor_check_loop:
-    # Exit loop if all cells are checked
-    beq  $t0, $t1, game_over
-
-    # Load current cell value
-    mul  $t3, $t0, 4           # Offset = index * 4
-    add  $t3, $s4, $t3         # Address = grid base + offset
-    lw   $t4, 0($t3)           # Load grid[$t0] value into $t4
-
-    # Check top neighbor
-    blt  $t0, 3, skip_top_check  # Skip if no top neighbor
-    sub  $t5, $t0, 3            # $t5 = index - 3 (top neighbor)
-    mul  $t6, $t5, 4            # Offset = top index * 4
-    add  $t6, $s4, $t6          # Address = grid base + offset
-    lw   $t7, 0($t6)            # Load top neighbor value
-    beq  $t4, $t7, game_continues # If equal, game can continue
-
-skip_top_check:
-    # Check bottom neighbor
-    addi $t5, $t0, 3            # $t5 = index + 3 (bottom neighbor)
-    bge  $t5, 9, skip_bottom_check # Skip if no bottom neighbor
-    mul  $t6, $t5, 4            # Offset = bottom index * 4
-    add  $t6, $s4, $t6          # Address = grid base + offset
-    lw   $t7, 0($t6)            # Load bottom neighbor value
-    beq  $t4, $t7, game_continues # If equal, game can continue
-
-skip_bottom_check:
-    # Check left neighbor
-    rem  $t8, $t0, 3            # $t8 = index % 3
-    beq  $t8, $zero, skip_left_check # Skip if no left neighbor
-    subi $t5, $t0, 1            # $t5 = index - 1 (left neighbor)
-    mul  $t6, $t5, 4            # Offset = left index * 4
-    add  $t6, $s4, $t6          # Address = grid base + offset
-    lw   $t7, 0($t6)            # Load left neighbor value
-    beq  $t4, $t7, game_continues # If equal, game can continue
-
-skip_left_check:
-    # Check right neighbor
-    addi $t5, $t0, 1            # $t5 = index + 1 (right neighbor)
-    rem  $t8, $t5, 3            # $t8 = (index + 1) % 3
-    beq  $t8, $zero, skip_right_check # Skip if no right neighbor
-    mul  $t6, $t5, 4            # Offset = right index * 4
-    add  $t6, $s4, $t6          # Address = grid base + offset
-    lw   $t7, 0($t6)            # Load right neighbor value
-    beq  $t4, $t7, game_continues # If equal, game can continue
-
-skip_right_check:
-    # Increment index to check the next cell
-    addi $t0, $t0, 1
-    j neighbor_check_loop       # Repeat for the next cell
-
-game_over:
-    print_string(lose_msg)      # Print "Game Over" message
+check_game_over_done:
+    print_string(lose_msg)
     exit
 
 game_continues:
-    jr $ra                      # Return to the caller
+    jr $ra
+
 
 win_game:
-    print_string(win_msg)       # Print "You Win!" message
+    print_string(win_msg)
     exit
-
 
 
 

@@ -89,7 +89,7 @@ invalid_input:         .asciiz "Invalid input. Try again.\n"
 newline:               .asciiz "\n"
 
 n:                     .word 3 # Grid size (can be changed to any value)
-backup_grid:            .space 36
+backup_grid:            .space 40
 
 .text
 main:
@@ -163,7 +163,6 @@ print_grid:
     move $t0, $s4            # Base address of grid (stored in $s4)
 
 print_row:
-    # Print a row separator
     print_string(grid_line)
 
 print_cell:
@@ -286,6 +285,8 @@ input_done:
     j play_game
 
 
+
+
 copy_grid_to_backup:
     li   $t0, 0               # t0 is the loop counter (i)
     li   $t3, 0               # t3 will be used to calculate the row-major index for the backup grid
@@ -293,7 +294,7 @@ copy_grid_to_backup:
 copy_grid_loop:
     # Check if we have processed all n * n cells
     mul  $t1, $s3, $s3         # t1 = n * n (total grid cells)
-    bge  $t0, $t1, copy_done   # If i >= n * n, exit loop
+    beq  $t0, $t1, copy_done   # If i = n * n, exit loop
 
     # Calculate the byte offset for the grid and backup_grid
     mul  $t2, $t0, 4           # t2 = i * 4 (byte offset for grid)
@@ -323,7 +324,7 @@ compare_grids:
 compare_loop:
     # Check if we've processed all n * n cells
     mul  $t1, $s3, $s3         # t1 = n * n (total grid cells)
-    bge  $t0, $t1, compare_done # If i >= n * n, exit loop
+    beq  $t0, $t1, compare_done # If i = n * n, exit loop
 
     # Calculate byte offset for grid and backup_grid
     mul  $t2, $t0, 4           # t2 = i * 4 (byte offset for grid)
@@ -395,6 +396,7 @@ play_game:
 
 # working code
 random_tile_generator:
+    beq $t8, $zero, no_change
     mul  $t2, $s3, $s3       # Calculate total cells n*n
     move $a1, $t2            # Set $a1 to total number of cells (n * n)
     
@@ -418,6 +420,10 @@ place_two:
     li   $t3, 2              # Load the value 2
     sw   $t3, 0($t0)         # Store the value 2 at the calculated address
     jal print_grid                 # Return from function
+    j play_game
+
+no_change:
+    jal print_grid
     j play_game
 
 
@@ -545,6 +551,7 @@ store_back:
     bne  $t0, $t6, swipe_right_row
 
     # After processing all rows, print the grid and return
+    jal compare_grids
     beq $s5, 4, random_tile_generator
     jal  print_grid          # Print the updated grid
 
@@ -664,6 +671,7 @@ store_back_left:
     bne  $t0, $t6, swipe_left_row
 
     # After processing all rows, print the grid and return
+    jal compare_grids
     beq $s5, 4, random_tile_generator
     jal  print_grid          # Print the updated grid
 
@@ -767,6 +775,7 @@ store_back_up:
     bne  $t0, $t6, swipe_up_column_up
 
     # After processing all columns, print the grid and return
+    jal compare_grids
     beq $s5, 4, random_tile_generator
     jal  print_grid          # Print the updated grid
 
@@ -870,6 +879,7 @@ store_back_down:
     bne  $t0, $t6, swipe_down_column_down
 
     # After processing all columns, print the grid and return
+    jal compare_grids
     beq $s5, 4, random_tile_generator
     jal  print_grid          # Print the updated grid
 

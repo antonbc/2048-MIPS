@@ -1,6 +1,6 @@
 # 2048 Game in MIPS Assembly
 
-This project is a simplified version of the popular 2048 game, implemented entirely in MIPS Assembly and designed to be simulated using the MARS software. The game features a 3x3 grid (rather than the usual 4x4), and the objective is to achieve a tile with a value of 512. The game ends in a win if a 512 tile is achieved or in a loss if the board fills up without possible moves.
+This project is a simplified version of the 4x4 grid 2048 game created by Gabrielle Cirulli, solely implemented in MIPS assembly which is designed to be run using the MARS software. The project is essentially a console version of the original 2048 game. The game features a 3x3 grid rather than the original 4x4 2048 game hence, the is capped at 512 instead of 2048. Additionally, instead of pressing the up,down,right, and left keys the game uses W,S,D, and A respectfully. Another feature unique to the project, is the option to enable and disable the generation of a new random tile. The game ends in a win if the player achieves a 512 tile or in a loss if the player fills the board up and no possible moves can be made.
 
 
 ## Requirements
